@@ -55,44 +55,99 @@ A collection of lightweight, non-intrusive widgets that sit directly on your wal
 
 ---
 
-## Dependencies
+## Manual Installation
 
-Make sure the following packages are installed on your system (Arch / CachyOS / Fedora / NixOS):
+### Dependencies
 
-### Core
-- `quickshell` (>= 0.1.0)
-- `hyprland` (Wayland compositor)
-- `matugen` (Material You color generation)
+#### Core Shell
+- [quickshell-git](https://git.outfoxxed.me/quickshell/quickshell) (Desktop shell toolkit for Qt6)
+- [hyprland](https://github.com/hyprwm/Hyprland) (Wayland compositor)
+- [matugen](https://github.com/InioX/matugen) (Material You color generation)
 
-### System Services & Utilities
-- `wireplumber` or `pipewire` (`wpctl` for audio & mic volume/mute)
-- `bluez` / `bluez-utils` (`bluetoothctl` for bluetooth connectivity)
-- `playerctl` (MPRIS media playback control)
-- `networkmanager` (`nmcli` for network management)
-- `grim` & `slurp` (screenshot utilities)
-- `zenity` (file and directory picker dialogs)
+#### System Utilities & Services
+- [pipewire](https://github.com/PipeWire/pipewire) / [wireplumber](https://gitlab.freedesktop.org/pipewire/wireplumber) (`wpctl` for audio & mic volume/mute)
+- [brightnessctl](https://github.com/Hummer12007/brightnessctl) (Screen brightness controls)
+- [networkmanager](https://gitlab.freedesktop.org/NetworkManager/NetworkManager) (`nmcli` for Wi-Fi & network status)
+- [bluez](https://git.kernel.org/pub/scm/bluetooth/bluez.git) & `bluez-utils` (`bluetoothctl` for device connections)
+- [playerctl](https://github.com/altdesktop/playerctl) (MPRIS media playback & metadata)
+- [grim](https://gitlab.freedesktop.org/emersion/grim) (Wayland screen grabber)
+- [slurp](https://gitlab.freedesktop.org/emersion/slurp) (Region selector for screenshot & recording)
+- [wl-clipboard](https://github.com/bugaevc/wl-clipboard) (`wl-copy` for clipboard management)
+- [wf-recorder](https://github.com/ammen99/wf-recorder) (Screen recording utility)
+- [jq](https://github.com/jqlang/jq) (Command-line JSON processor)
+- [zenity](https://gitlab.gnome.org/GNOME/zenity) (File and folder chooser dialogs)
+- [libcanberra](https://git.0pointer.net/libcanberra.git) (Shutter sound on screenshot)
+- [lm_sensors](https://github.com/lm-sensors/lm-sensors) (`sensors` for CPU thermal telemetry)
+- `python` (Standard Python 3 library for local state serialization)
 
-### Recommended Fonts
-- `Adwaita Sans` / `Inter` (UI typography)
-- `Material Symbols Outlined` (Iconography)
-- `JetBrainsMono Nerd Font` (Monospace & telemetry)
+#### Qt6 Runtime & Libraries
+- `qt6-base`
+- `qt6-declarative`
+- `qt6-imageformats`
+- `qt6-multimedia`
+- `qt6-shadertools` (Shader baker `qsb` for transition shaders)
+
+#### Typography & Icon Fonts
+- [ttf-material-symbols-variable](https://github.com/google/material-design-icons) (Google Material Symbols Outlined)
+- [inter-font](https://github.com/rsms/inter) (atau `ttf-inter` untuk UI typography)
+- [ttf-jetbrains-mono-nerd](https://github.com/ryanoasis/nerd-fonts) (Monospace & hardware telemetry)
 
 ---
 
-## Installation
+### Arch Linux / CachyOS (One-Liner Install)
 
-1. **Clone the repository** to your Quickshell configuration path:
+Install all official dependencies with `pacman`:
+
+```bash
+sudo pacman -S --needed \
+    hyprland \
+    pipewire \
+    wireplumber \
+    networkmanager \
+    bluez \
+    bluez-utils \
+    brightnessctl \
+    playerctl \
+    grim \
+    slurp \
+    wl-clipboard \
+    wf-recorder \
+    jq \
+    zenity \
+    libcanberra \
+    lm_sensors \
+    python \
+    qt6-base \
+    qt6-declarative \
+    qt6-imageformats \
+    qt6-multimedia \
+    qt6-shadertools \
+    inter-font \
+    ttf-jetbrains-mono-nerd
+```
+
+Install AUR dependencies with `paru` or `yay`:
+
+```bash
+yay -S --needed quickshell-git matugen-bin ttf-material-symbols-variable
+```
+
+---
+
+### Setup Instructions
+
+1. **Clone the repository** into your Quickshell configuration path:
    ```bash
    git clone https://github.com/Reze-1214/quickshell-sora.git ~/.config/quickshell/sora
    ```
 
-2. **Launch with Quickshell**:
+2. **Test run with Quickshell**:
    ```bash
    quickshell -c sora
    ```
 
 3. **Auto-start on Hyprland**:
-   Add this line to your `~/.config/hypr/hyprland.conf`:
+   Add the following line to your `~/.config/hypr/hyprland.conf`:
    ```ini
    exec-once = quickshell -c sora -n
    ```
