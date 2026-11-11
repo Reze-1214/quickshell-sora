@@ -1,0 +1,30 @@
+Bar 1.0 Bar.qml
+Background 1.0 Background.qml
+Workspaces 1.0 Workspaces.qml
+ActiveWindow 1.0 ActiveWindow.qml
+Clock 1.0 Clock.qml
+Battery 1.0 Battery.qml
+BatteryPopover 1.0 BatteryPopover.qml
+Audio 1.0 Audio.qml
+Media 1.0 Media.qml
+Tray 1.0 Tray.qml
+OSD 1.0 OSD.qml
+BrightnessOSD 1.0 BrightnessOSD.qml
+Dashboard 1.0 Dashboard.qml
+Notifications 1.0 Notifications.qml
+Launcher 1.0 Launcher.qml
+PowerMenu 1.0 PowerMenu.qml
+TrayPopover 1.0 TrayPopover.qml
+Dock 1.0 Dock.qml
+DesktopPet 1.0 DesktopPet.qml
+CenterIsland 1.0 CenterIsland.qml
+CenterPopover 1.0 CenterPopover.qml
+ProfileCard 1.0 ProfileCard.qml
+MediaCard 1.0 MediaCard.qml
+PerfCard 1.0 PerfCard.qml
+DesktopWidgets 1.0 DesktopWidgets.qml
+DesktopContextMenu 1.0 DesktopContextMenu.qml
+WidgetManager 1.0 WidgetManager.qml
+WallpaperPicker 1.0 WallpaperPicker.qml
+
+

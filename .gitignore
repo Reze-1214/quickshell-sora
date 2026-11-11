@@ -1,0 +1,18 @@
+# Temporary & cache files
+*.tmp
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+
+# User personal state
+config/calendar_events.json
+config/calendar_marks.json
+config/accent.txt
+.wallpapers_old_backup/
+
+# Local developer & agent configs
+AGENTS.md
+CLAUDE.md
+.cursor*
