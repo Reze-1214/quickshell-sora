@@ -1,57 +1,52 @@
-# Sora (空) `v0.1.0-alpha`
+<div align="center">
 
-> **Status: Work in Progress (Alpha)**  
-> Sora is currently in active development. Features, layout refinements, and documentation are continuously evolving.
+# Sora (空)
 
-A sleek, minimalist, Material You desktop shell for Hyprland built with [Quickshell](https://quickshell.outfoxxed.me/).
+**A sleek, minimalist Material You desktop shell for Hyprland built with [Quickshell](https://quickshell.outfoxxed.me/).**
 
-![Desktop Preview](assets/screenshots/preview-desktop.png)
+[![Version](https://img.shields.io/badge/version-v0.1.0--alpha-blue.svg?style=flat-square)](https://github.com/Reze-1214/quickshell-sora)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Quickshell](https://img.shields.io/badge/built%20with-Quickshell-purple.svg?style=flat-square)](https://git.outfoxxed.me/quickshell/quickshell)
+[![Hyprland](https://img.shields.io/badge/Wayland-Hyprland-00c8ff.svg?style=flat-square)](https://github.com/hyprwm/Hyprland)
 
----
+<br/>
 
-## Visual Tour & Key Modules
+### Desktop Overview
+![Sora Desktop Overview](assets/screenshots/preview-desktop.png)
 
-### 1. Ultra-Slim Floating Top Bar
-A compact 38px bar with 30px pill modules designed to maximize usable screen estate without visual clutter:
+<br/>
 
-![Top Bar](assets/screenshots/preview-bar.png)
+### Center Island & Dashboard
+![Sora Dashboard & Center Island](assets/screenshots/preview-dashboard.png)
 
-- **Left Section (Workspaces)**: Dynamic workspace indicator showing active workspace index, with a toggleable Kanji numeral mode (一, 二, 三...) and current active window title pill.
-- **Center Section (Unified Island)**: A 3-page interactive sliding capsule:
-  - *Page 1*: Quick profile card and date summary.
-  - *Page 2*: Live MPRIS media controls (play/pause, track title, artist).
-  - *Page 3*: System hardware telemetry (CPU, RAM, and temperature meters).
-  - *Interaction*: Simply scroll up/down over the capsule to switch pages instantly.
-- **Right Section (Status Cluster)**:
-  - Live Bluetooth indicator showing connected device name (click to open panel, right-click to toggle adapter power).
-  - Network status indicator with Wi-Fi signal strength.
-  - Privacy Microphone Mute badge (lights up when microphone is muted).
-  - Clock pill with Do Not Disturb (DND) status badge (right-click to toggle DND).
+</div>
 
 ---
 
-### 2. Dynamic Island Toast Notifications
-A notification toast floating directly beneath the center island:
+## Highlights & Features
 
-![Notification Toast](assets/screenshots/preview-notification.png)
-
-- **Adaptive Width**: Intelligently hugs content from 168px up to 304px, preventing oversized empty bubbles.
-- **Clean Hierarchy**: 2-line layout prioritizing the application title and message preview.
-- **Wallpaper-Derived Styling**: Subtle 1px outline using dynamic Material You accents extracted from your current wallpaper.
-- **Non-Intrusive Controls**: Dismiss button appears gracefully on mouse hover to keep the interface pristine during normal viewing.
-
----
-
-### 3. Modular Desktop Widgets
-A collection of lightweight, non-intrusive widgets that sit directly on your wallpaper:
-
-![Desktop Widgets](assets/screenshots/preview-widgets.png)
-
-- **Pulse Health Widget**: Compact radial or bar meters for live CPU, memory, and thermal telemetry.
-- **Network Telemetry**: Real-time download/upload speed monitoring with link quality indicators.
-- **Media Wave**: Animated audio visualizer bars synced to active media playback.
-- **Photo Frame**: Customizable on-desktop polaroid/photo frame that defaults to matching your active wallpaper or personal photo.
-- **Sun Phase & Weather**: Day/night solar cycle display combined with local weather conditions and temperature.
+- **Ultra-Slim Floating Top Bar**: Compact 38px floating bar with 30px pill modules to maximize usable screen estate without visual clutter.
+- **Unified Center Island**: An interactive 3-page sliding capsule in the center of the bar:
+  - **Page 1**: Profile card, date summary, and greeting.
+  - **Page 2**: Live MPRIS media player with track title, artist, and play/pause controls.
+  - **Page 3**: System hardware telemetry (CPU, RAM, and thermals).
+  - *Interaction*: Simply scroll up/down over the capsule to switch pages instantly, or click to open the full Control Center.
+- **Comprehensive Control Center (Dashboard)**:
+  - Header profile banner with personalized greeting and quick status.
+  - Interactive monthly calendar with daily event markings and agenda notes.
+  - Live weather forecast showing temperature, conditions, and wind speed.
+  - Hardware quick toggles: Wi-Fi drawer, Bluetooth panel, Dark/Light mode switch, and Power controls.
+- **Dynamic Island Toast Notifications**:
+  - Floats seamlessly beneath the top bar with adaptive width (*hug-content* 168px - 304px).
+  - Clean 2-line visual hierarchy with subtle wallpaper-derived Material You accents.
+  - Non-intrusive dismiss button that appears smoothly on hover.
+- **Modular Desktop Widgets**:
+  - **Pulse Health**: Real-time radial and progress meters for CPU, RAM, and thermals.
+  - **Network Telemetry**: Live download/upload bandwidth monitors and network graph.
+  - **Media Wave**: Animated audio visualizer bars synced to active media playback.
+  - **Photo Frame**: Customizable on-desktop polaroid frame.
+  - **Sun Phase & Date**: Day/night solar cycle display with date card.
+- **Material You Dynamic Theming**: Automatic color extraction from wallpapers via `matugen`, paired with a color-lock engine ensuring vibrant accents stay identical across both Dark and Light modes.
 
 ---
 
@@ -62,21 +57,21 @@ A collection of lightweight, non-intrusive widgets that sit directly on your wal
 #### Core Shell
 - [quickshell-git](https://git.outfoxxed.me/quickshell/quickshell) (Desktop shell toolkit for Qt6)
 - [hyprland](https://github.com/hyprwm/Hyprland) (Wayland compositor)
-- [matugen](https://github.com/InioX/matugen) (Material You color generation)
+- [matugen](https://github.com/InioX/matugen) (Material You color palette generation)
 
 #### System Utilities & Services
 - [pipewire](https://github.com/PipeWire/pipewire) / [wireplumber](https://gitlab.freedesktop.org/pipewire/wireplumber) (`wpctl` for audio & mic volume/mute)
 - [brightnessctl](https://github.com/Hummer12007/brightnessctl) (Screen brightness controls)
 - [networkmanager](https://gitlab.freedesktop.org/NetworkManager/NetworkManager) (`nmcli` for Wi-Fi & network status)
-- [bluez](https://git.kernel.org/pub/scm/bluetooth/bluez.git) & `bluez-utils` (`bluetoothctl` for device connections)
+- [bluez](https://git.kernel.org/pub/scm/bluetooth/bluez.git) & `bluez-utils` (`bluetoothctl` for Bluetooth devices)
 - [playerctl](https://github.com/altdesktop/playerctl) (MPRIS media playback & metadata)
-- [grim](https://gitlab.freedesktop.org/emersion/grim) (Wayland screen grabber)
-- [slurp](https://gitlab.freedesktop.org/emersion/slurp) (Region selector for screenshot & recording)
+- [grim](https://gitlab.freedesktop.org/emersion/grim) (Wayland screen capture)
+- [slurp](https://gitlab.freedesktop.org/emersion/slurp) (Interactive region selector)
 - [wl-clipboard](https://github.com/bugaevc/wl-clipboard) (`wl-copy` for clipboard management)
 - [wf-recorder](https://github.com/ammen99/wf-recorder) (Screen recording utility)
-- [jq](https://github.com/jqlang/jq) (Command-line JSON processor)
+- [jq](https://github.com/jqlang/jq) (Command-line JSON parser)
 - [zenity](https://gitlab.gnome.org/GNOME/zenity) (File and folder chooser dialogs)
-- [libcanberra](https://git.0pointer.net/libcanberra.git) (Shutter sound on screenshot)
+- [libcanberra](https://git.0pointer.net/libcanberra.git) (Shutter sound effect on screenshot)
 - [lm_sensors](https://github.com/lm-sensors/lm-sensors) (`sensors` for CPU thermal telemetry)
 - `python` (Standard Python 3 library for local state serialization)
 
@@ -85,7 +80,7 @@ A collection of lightweight, non-intrusive widgets that sit directly on your wal
 - `qt6-declarative`
 - `qt6-imageformats`
 - `qt6-multimedia`
-- `qt6-shadertools` (Shader baker `qsb` for transition shaders)
+- `qt6-shadertools` (Qt Shader Baker `qsb` for transition shaders)
 
 #### Typography & Icon Fonts
 - [ttf-material-symbols-variable](https://github.com/google/material-design-icons) (Google Material Symbols Outlined)
@@ -158,7 +153,7 @@ yay -S --needed quickshell-git matugen-bin ttf-material-symbols-variable
 
 | Action | Interaction |
 | :--- | :--- |
-| **Open Control Center / Dashboard** | Left-click the Clock pill (or top-right cluster) |
+| **Open Control Center / Dashboard** | Left-click the Clock pill (or click Center Island) |
 | **Toggle Do Not Disturb (DND)** | Right-click the Clock pill |
 | **Toggle Bluetooth Power** | Right-click the Bluetooth icon in the top bar |
 | **Cycle Center Island Pages** | Scroll wheel up / down over the Center Island |
@@ -168,9 +163,11 @@ yay -S --needed quickshell-git matugen-bin ttf-material-symbols-variable
 
 ---
 
-## Roadmap (`v0.1.x` - `v0.2.0`)
+## Roadmap (`v0.1.x` -> `v0.2.0`)
 
 - [x] Floating ultra-slim bar with hardware status cluster
+- [x] Unified 3-page Center Island with smooth scroll switching
+- [x] Comprehensive Control Center (Calendar, Weather, Hardware toggles)
 - [x] Dynamic island toast notifications with adaptive width
 - [x] Material You wallpaper extraction & consistent accent lock
 - [x] Modular desktop widgets (Pulse Health, Network, Media Wave, Sun Phase)
