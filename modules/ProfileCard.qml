@@ -1193,7 +1193,6 @@ Item {
                                     spacing: 8
 
                                     Text {
-                                        anchors.baseline: heroClockText.baseline
                                         id: heroClockText
                                         text: root.heroTimeText
                                         font.family: Theme.fontFamily

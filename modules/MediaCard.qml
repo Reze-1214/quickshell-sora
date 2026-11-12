@@ -1037,26 +1037,11 @@ Item {
 
                                 HoverHandler { id: rowHover }
 
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 12
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: rowItem.isCurrent ? 3 : 0
-                                    height: rowItem.isCurrent ? Math.min(18, lyricText.implicitHeight) : 0
-                                    radius: 1.5
-                                    color: Theme.accentInk
-                                    opacity: rowItem.isCurrent ? 1.0 : 0.0
-
-                                    Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                                    Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                                    Behavior on opacity { NumberAnimation { duration: 160 } }
-                                }
-
                                 Text {
                                     id: lyricText
                                     anchors.left: parent.left
                                     anchors.right: parent.right
-                                    anchors.leftMargin: rowItem.isCurrent ? 22 : 14
+                                    anchors.leftMargin: 14
                                     anchors.rightMargin: 14
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: rowItem.modelData.text
@@ -1070,7 +1055,6 @@ Item {
                                         : (rowHover.hovered ? Theme.text : Theme.subtext)
                                     wrapMode: Text.Wrap
 
-                                    Behavior on anchors.leftMargin { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                                     Behavior on color { ColorAnimation { duration: 160 } }
                                 }
 

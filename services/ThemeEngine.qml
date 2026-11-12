@@ -17,7 +17,7 @@ Singleton {
     property string wallpaperPaletteBuffer: ""
     property var wallpapers: []
     property string scanBuffer: ""
-    property string activeFolder: `${Quickshell.env("HOME")}/Gambar/Wallpapers`
+    property string activeFolder: `${Quickshell.env("HOME")}/Pictures/Wallpapers`
 
     property var profileBanners: ({})
     property var dashboardBanners: ({})
@@ -103,13 +103,11 @@ Singleton {
         scanBuffer = "";
         const homeDir = Quickshell.env("HOME");
         const scanPaths = [
-            `${homeDir}/.config/quickshell/sora/assets/wallpapers`,
-            `${homeDir}/.config/quickshell/sora/assets/wallpaper.jpg`,
-            root.activeFolder,
-            `${homeDir}/Gambar/wallpaper`,
-            `${homeDir}/Pictures/Wallpapers`,
-            `${homeDir}/Pictures/wallpapers`
+            `${homeDir}/.config/quickshell/sora/assets/wallpapers`
         ];
+        if (root.activeFolder && root.activeFolder.length > 0 && root.activeFolder !== `${homeDir}/.config/quickshell/sora/assets/wallpapers`) {
+            scanPaths.push(root.activeFolder);
+        }
         if (Config.wallpaperPath && Config.wallpaperPath.length > 0 && !Config.wallpaperPath.startsWith("file://")) {
             scanPaths.push(Config.wallpaperPath);
         }
@@ -306,6 +304,11 @@ Singleton {
         Quickshell.execDetached([
             "gsettings", "set", "org.gnome.desktop.interface", "color-scheme", scheme
         ]);
+
+        // Sync Terminal (foot / shell) color scheme with Sora Material You palette
+        Quickshell.execDetached([
+            "python3", `${Quickshell.env("HOME")}/.config/quickshell/sora/scripts/sync_terminal_theme.py`
+        ]);
     }
 
     property bool _hasAppliedThemeOnce: false
@@ -405,8 +408,18 @@ Singleton {
         }
         onExited: {
             const raw = root.scanBuffer.trim().split("\n").filter(p => p.length > 0);
-            // Deduplicate paths
-            root.wallpapers = [...new Set(raw)];
+            // Deduplicate by filename so identical files in multiple scanned paths only appear once
+            const seenBasenames = new Set();
+            const unique = [];
+            for (let i = 0; i < raw.length; i++) {
+                const path = raw[i];
+                const base = path.split("/").pop();
+                if (!seenBasenames.has(base)) {
+                    seenBasenames.add(base);
+                    unique.push(path);
+                }
+            }
+            root.wallpapers = unique;
             root.scanBuffer = "";
         }
     }

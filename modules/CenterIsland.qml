@@ -166,14 +166,14 @@ Item {
                 id: track
                 width: viewport.width * 3
                 height: viewport.height
-                x: -Config.activeCenterPage * viewport.width
+                x: -root.currentPage * viewport.width
 
                 Behavior on x {
                     NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
                 }
 
                 // ------------------------------------------------------------
-                // PAGE 0: USER PROFILE, DATE & ANIME
+                // PAGE 0: USER PROFILE, DATE & STATUS
                 // ------------------------------------------------------------
                 Item {
                     id: pageProfile
@@ -186,7 +186,7 @@ Item {
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 6
+                        spacing: 8
 
                         // 1. User Avatar (Circular Mask ~/.face or Fallback Initial)
                         Item {
@@ -251,31 +251,42 @@ Item {
                             text: root.userName
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
-                            font.weight: Font.Bold
+                            font.weight: Font.DemiBold
                             color: Theme.text
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
+                        // Hairline Divider
                         Rectangle {
-                            width: 4
-                            height: 4
-                            radius: 2
+                            width: 1
+                            height: 10
+                            radius: 0.5
                             color: Theme.outlineStrong
-                            border.pixelAligned: true
+                            opacity: 0.75
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        // 3. Date (e.g. "Sab, 7 Nov")
-                        Text {
-                            text: Qt.formatDateTime(sysClock.date, "ddd, d MMM")
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 10
-                            font.weight: Font.Medium
-                            color: Theme.subtext
+                        // 3. Date with Calendar Icon
+                        Row {
+                            spacing: 4
                             anchors.verticalCenter: parent.verticalCenter
+
+                            MatIcon {
+                                icon: "calendar_today"
+                                size: 12
+                                color: Theme.secondary
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: Qt.formatDateTime(sysClock.date, "ddd, d MMM")
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                font.weight: Font.Medium
+                                color: Theme.subtext
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
                         }
-
-
                     }
                 }
 
@@ -291,11 +302,13 @@ Item {
                     visible: opacity > 0.005
                     Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
+                    // Active Playing Layout
                     Row {
+                        visible: root.hasMedia
                         anchors.centerIn: parent
                         spacing: 8
 
-                        // Spotify Logo / Album Art
+                        // Spotify Logo / Album Art (Rounded Squircle)
                         Item {
                             width: 20
                             height: 20
@@ -304,7 +317,7 @@ Item {
                             Rectangle {
                                 id: logoMask
                                 anchors.fill: parent
-                                radius: 10
+                                radius: 5
                                 color: "#ffffff"
                                 visible: false
                                 layer.enabled: true
@@ -322,7 +335,7 @@ Item {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: "#1ed760"
+                                    color: "#1DB954"
                                 }
 
                                 Image {
@@ -336,7 +349,7 @@ Item {
 
                                 Image {
                                     anchors.fill: parent
-                                    anchors.margins: 1.5
+                                    anchors.margins: 2
                                     source: `${Quickshell.env("HOME")}/.config/quickshell/sora/assets/spotify.svg`
                                     fillMode: Image.PreserveAspectFit
                                     visible: albumArtThumb.status !== Image.Ready
@@ -347,14 +360,14 @@ Item {
 
                             Rectangle {
                                 anchors.fill: parent
-                                radius: 10
+                                radius: 5
                                 color: "transparent"
                                 border.width: 1
                                 border.color: Qt.alpha(Theme.outlineStrong, 0.45)
                             }
                         }
 
-                        // Track Title & Artist (Marquee if overflow, or Idle)
+                        // Track Title & Artist (Marquee if overflow)
                         Item {
                             id: mediaTitleBox
                             height: 20
@@ -362,10 +375,10 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             clip: isOverflow
 
-                            readonly property real maxTextW: 168
-                            readonly property real textW: titleText.implicitWidth + (root.trackArtist.length > 0 ? (dotText.implicitWidth + artistText.implicitWidth + 12) : 0)
+                            readonly property real maxTextW: 156
+                            readonly property real textW: titleText.implicitWidth + (root.trackArtist.length > 0 ? (dotText.implicitWidth + artistText.implicitWidth + 10) : 0)
                             readonly property bool isOverflow: root.hasMedia && textW > maxTextW
-                            readonly property real loopGap: 28
+                            readonly property real loopGap: 24
                             readonly property real scrollDistance: textW + loopGap
 
                             onIsOverflowChanged: resetMarquee()
@@ -409,7 +422,7 @@ Item {
                                         text: root.trackTitle
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
-                                        font.weight: Font.Bold
+                                        font.weight: Font.DemiBold
                                         color: root.isPlaying ? Theme.text : Theme.subtext
                                     }
 
@@ -443,7 +456,7 @@ Item {
                                         text: root.trackTitle
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
-                                        font.weight: Font.Bold
+                                        font.weight: Font.DemiBold
                                         color: root.isPlaying ? Theme.text : Theme.subtext
                                     }
 
@@ -472,7 +485,7 @@ Item {
                                 loops: Animation.Infinite
                                 running: root.isPlaying && mediaTitleBox.isOverflow && root.currentPage === 1
 
-                                PauseAnimation { duration: 1200 }
+                                PauseAnimation { duration: 1400 }
                                 NumberAnimation {
                                     target: marqueeRow
                                     property: "x"
@@ -482,20 +495,9 @@ Item {
                                     easing.type: Easing.Linear
                                 }
                             }
-
-                            // Idle text when no track is playing
-                            Text {
-                                visible: !root.hasMedia
-                                anchors.centerIn: parent
-                                text: "Spotify Idle"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                                font.weight: Font.Medium
-                                color: Theme.subtext
-                            }
                         }
 
-                        // Mini visualizer bars
+                        // Organic Live Visualizer (Playing)
                         Row {
                             spacing: 2
                             anchors.verticalCenter: parent.verticalCenter
@@ -503,16 +505,17 @@ Item {
 
                             Repeater {
                                 model: [
-                                    { hMin: 3, hMax: 12, dur: 360 },
-                                    { hMin: 4, hMax: 15, dur: 440 },
-                                    { hMin: 3, hMax: 10, dur: 320 }
+                                    { hMin: 3, hMax: 11, dur: 380 },
+                                    { hMin: 4, hMax: 14, dur: 460 },
+                                    { hMin: 3, hMax: 9, dur: 310 },
+                                    { hMin: 4, hMax: 12, dur: 420 }
                                 ]
                                 Rectangle {
                                     required property var modelData
-                                    width: 2
-                                    radius: 1
+                                    width: 2.5
+                                    radius: 1.25
                                     border.pixelAligned: true
-                                    color: "#1ed760"
+                                    color: "#1DB954"
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     SequentialAnimation on height {
@@ -523,6 +526,63 @@ Item {
                                     }
                                 }
                             }
+                        }
+
+                        // Paused State Indicator
+                        Row {
+                            spacing: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !root.isPlaying
+
+                            Repeater {
+                                model: [4, 7, 5, 3]
+                                Rectangle {
+                                    required property var modelData
+                                    width: 2.5
+                                    height: modelData
+                                    radius: 1.25
+                                    color: Theme.subtext
+                                    opacity: 0.6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+                    }
+
+                    // Idle State (No Media)
+                    Row {
+                        visible: !root.hasMedia
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Item {
+                            width: 18
+                            height: 18
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 9
+                                color: Qt.alpha(Theme.surfaceContainerHigh, 0.7)
+                                border.width: 1
+                                border.color: Theme.outline
+                            }
+
+                            MatIcon {
+                                anchors.centerIn: parent
+                                icon: "music_note"
+                                size: 11
+                                color: Theme.secondary
+                            }
+                        }
+
+                        Text {
+                            text: "No media playback"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                            color: Theme.subtext
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
                 }
@@ -543,73 +603,131 @@ Item {
                         anchors.centerIn: parent
                         spacing: 8
 
-                        // 4-Bar Mini Equalizer Graphic
+                        // 1. CPU Telemetry Chip
                         Row {
-                            spacing: 2
+                            spacing: 4
                             anchors.verticalCenter: parent.verticalCenter
 
-                            Repeater {
-                                model: [
-                                    { h: 8, c: "#06b6d4" },
-                                    { h: 14, c: "#10b981" },
-                                    { h: 11, c: "#ff2a85" },
-                                    { h: 15, c: "#a3e635" }
-                                ]
+                            MatIcon {
+                                icon: "memory"
+                                size: 12
+                                color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.primary
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: `${SysMonitor.cpuPercent}%`
+                                font.family: Theme.fontMono
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.features: Theme.tabularFeatures
+                                color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.text
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            // Dynamic micro-progress bar
+                            Rectangle {
+                                width: 14
+                                height: 3
+                                radius: 1.5
+                                color: Qt.alpha(Theme.outlineStrong, 0.4)
+                                clip: true
+                                anchors.verticalCenter: parent.verticalCenter
+
                                 Rectangle {
-                                    required property var modelData
-                                    width: 3
-                                    height: modelData.h
-                                    radius: 1
-                                    border.pixelAligned: true
-                                    color: modelData.c
-                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.max(2, Math.round(parent.width * Math.min(1.0, SysMonitor.cpuPercent / 100)))
+                                    height: parent.height
+                                    radius: 1.5
+                                    color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.primary
+                                    Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
                                 }
                             }
                         }
 
-                        Text {
-                            text: `${SysMonitor.tempC}°C`
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            font.weight: Font.Bold
-                            color: Theme.text
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
+                        // Divider 1
                         Rectangle {
-                            width: 4
-                            height: 4
-                            radius: 2
+                            width: 1
+                            height: 10
+                            radius: 0.5
                             color: Theme.outlineStrong
-                            border.pixelAligned: true
+                            opacity: 0.75
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Text {
-                            text: `${SysMonitor.cpuPercent}% CPU`
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            font.weight: Font.Medium
-                            color: Theme.subtext
+                        // 2. RAM Telemetry Chip
+                        Row {
+                            spacing: 4
                             anchors.verticalCenter: parent.verticalCenter
+
+                            MatIcon {
+                                icon: "storage"
+                                size: 12
+                                color: SysMonitor.ramPercent >= 90 ? Theme.urgent : Theme.secondary
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: `${SysMonitor.ramPercent}%`
+                                font.family: Theme.fontMono
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.features: Theme.tabularFeatures
+                                color: SysMonitor.ramPercent >= 90 ? Theme.urgent : Theme.text
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            // Dynamic micro-progress bar
+                            Rectangle {
+                                width: 14
+                                height: 3
+                                radius: 1.5
+                                color: Qt.alpha(Theme.outlineStrong, 0.4)
+                                clip: true
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                Rectangle {
+                                    width: Math.max(2, Math.round(parent.width * Math.min(1.0, SysMonitor.ramPercent / 100)))
+                                    height: parent.height
+                                    radius: 1.5
+                                    color: SysMonitor.ramPercent >= 90 ? Theme.urgent : Theme.secondary
+                                    Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                }
+                            }
                         }
 
+                        // Divider 2
                         Rectangle {
-                            width: 4
-                            height: 4
-                            radius: 2
+                            width: 1
+                            height: 10
+                            radius: 0.5
                             color: Theme.outlineStrong
-                            border.pixelAligned: true
+                            opacity: 0.75
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Text {
-                            text: `${SysMonitor.ramPercent}% RAM`
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            font.weight: Font.Medium
-                            color: Theme.subtext
+                        // 3. Temperature Chip
+                        Row {
+                            spacing: 3
                             anchors.verticalCenter: parent.verticalCenter
+
+                            MatIcon {
+                                icon: "device_thermostat"
+                                size: 12
+                                color: SysMonitor.tempC >= 78 ? Theme.urgent : Theme.secondary
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: `${SysMonitor.tempC}°C`
+                                font.family: Theme.fontMono
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.features: Theme.tabularFeatures
+                                color: SysMonitor.tempC >= 78 ? Theme.urgent : Theme.subtext
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
                         }
                     }
                 }

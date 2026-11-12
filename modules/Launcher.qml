@@ -24,7 +24,10 @@ PanelWindow {
 
     property real openProgress: Config.launcherOpen ? 1.0 : 0.0
     Behavior on openProgress {
-        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: Config.launcherOpen ? 260 : 180
+            easing.type: Config.launcherOpen ? Easing.OutQuint : Easing.InQuad
+        }
     }
 
     color: "transparent"
@@ -124,20 +127,29 @@ PanelWindow {
         if (Config.launcherOpen) searchField.forceActiveFocus();
     }
 
-    MouseArea {
+    // Smooth Dim Backdrop (In & Out fade)
+    Rectangle {
+        id: backdrop
         anchors.fill: parent
-        enabled: Config.launcherOpen
-        onClicked: Config.launcherOpen = false
+        color: Qt.alpha(Theme.background, (Theme.isDarkMode ? 0.38 : 0.16) * root.openProgress)
+        opacity: root.openProgress
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: Config.launcherOpen
+            onClicked: Config.launcherOpen = false
+        }
     }
 
     RectangularShadow {
         anchors.fill: startMenuCard
         radius: startMenuCard.radius
-        blur: 20
+        blur: Math.round(16 + 8 * root.openProgress)
         spread: 0.0
-        offset.y: 6
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.44 : 0.12)
+        offset.y: Math.round(4 + 4 * root.openProgress)
+        color: Qt.alpha("#000000", (Theme.isDarkMode ? 0.44 : 0.12) * root.openProgress)
         opacity: root.openProgress
+        scale: startMenuCard.scale
         z: startMenuCard.z - 1
     }
 
@@ -145,15 +157,15 @@ PanelWindow {
         id: startMenuCard
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: -16 + (1.0 - root.openProgress) * 12
+        anchors.verticalCenterOffset: -16 + Math.round((1.0 - root.openProgress) * (Config.launcherOpen ? 20 : 12))
         width: 656
         height: 556
         radius: 14
         color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.97)
         border.width: 1
         border.color: Theme.outlineStrong
-        opacity: root.openProgress
-        scale: 0.97 + (0.03 * root.openProgress)
+        opacity: Math.pow(root.openProgress, 1.15)
+        scale: 0.94 + (0.06 * root.openProgress)
         clip: true
 
         Behavior on color { ColorAnimation { duration: Theme.animFast } }
