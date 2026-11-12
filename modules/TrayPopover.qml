@@ -26,7 +26,7 @@ PanelWindow {
     }
 
     implicitWidth: 190
-    implicitHeight: Math.max(60, Math.min(320, cardCol.implicitHeight + 12)) + 12
+    implicitHeight: Math.max(60, cardCol.implicitHeight + 24)
 
     property real openProgress: Config.trayPopoverOpen ? 1.0 : 0.0
     Behavior on openProgress {

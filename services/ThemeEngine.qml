@@ -108,7 +108,7 @@ Singleton {
         if (root.activeFolder && root.activeFolder.length > 0 && root.activeFolder !== `${homeDir}/.config/quickshell/sora/assets/wallpapers`) {
             scanPaths.push(root.activeFolder);
         }
-        if (Config.wallpaperPath && Config.wallpaperPath.length > 0 && !Config.wallpaperPath.startsWith("file://")) {
+        if (Config.wallpaperPath && Config.wallpaperPath.length > 0 && !Config.wallpaperPath.startsWith("file://") && Config.wallpaperPath !== `${homeDir}/.config/quickshell/sora/assets/wallpaper.jpg`) {
             scanPaths.push(Config.wallpaperPath);
         }
         scanProc.command = [
@@ -408,11 +408,13 @@ Singleton {
         }
         onExited: {
             const raw = root.scanBuffer.trim().split("\n").filter(p => p.length > 0);
+            const defaultFallback = `${Quickshell.env("HOME")}/.config/quickshell/sora/assets/wallpaper.jpg`;
             // Deduplicate by filename so identical files in multiple scanned paths only appear once
             const seenBasenames = new Set();
             const unique = [];
             for (let i = 0; i < raw.length; i++) {
                 const path = raw[i];
+                if (path === defaultFallback) continue;
                 const base = path.split("/").pop();
                 if (!seenBasenames.has(base)) {
                     seenBasenames.add(base);

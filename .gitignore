@@ -16,3 +16,6 @@ config/accent.txt
 AGENTS.md
 CLAUDE.md
 .cursor*
+.agents/
+graphify-out/
+.gitattributes
