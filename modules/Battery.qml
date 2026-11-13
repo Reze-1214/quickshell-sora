@@ -9,7 +9,8 @@ import "../services"
 Item {
     id: root
 
-    implicitWidth: contentRow.implicitWidth
+    visible: UPower.displayDevice.isLaptopBattery || UPower.displayDevice.percentage > 0
+    implicitWidth: visible ? contentRow.implicitWidth : 0
     implicitHeight: Config.pillHeight
 
     readonly property real pct: UPower.displayDevice.percentage

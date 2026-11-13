@@ -22,10 +22,10 @@ Pill {
 
             required property SystemTrayItem modelData
 
-            implicitWidth: 20
-            implicitHeight: 20
-            radius: 10
-                    color: trayMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent"
+            implicitWidth: 24
+            implicitHeight: 24
+            radius: 12
+            color: trayMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent"
 
             transformOrigin: Item.Center
             scale: trayMouse.pressed ? 0.88 : 1.0

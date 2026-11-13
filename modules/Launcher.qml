@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 import "../config"
@@ -35,6 +36,32 @@ PanelWindow {
 
     property int selectedIndex: 0
     property bool showAllApps: false
+    property var recentIds: []
+    readonly property string recentFilePath: `${Quickshell.env("HOME")}/.config/quickshell/sora/config/launcher_recent.json`
+
+    FileView {
+        id: recentFile
+        path: root.recentFilePath
+        preload: true
+        blockLoading: false
+        atomicWrites: true
+        printErrors: false
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(text());
+                if (Array.isArray(parsed)) {
+                    root.recentIds = parsed.filter(id => typeof id === "string" && id.length > 0).slice(0, 8);
+                }
+            } catch (e) {}
+        }
+    }
+
+    function recordRecent(appId: string): void {
+        if (!appId || appId.length === 0) return;
+        const next = [appId, ...recentIds.filter(id => id !== appId)].slice(0, 8);
+        recentIds = next;
+        recentFile.setText(JSON.stringify(next));
+    }
 
     readonly property var allEntries: [...DesktopEntries.applications.values]
         .filter(a => a && a.name && !a.noDisplay)
@@ -74,7 +101,14 @@ PanelWindow {
         return curated.slice(0, 18);
     }
 
-    readonly property var recommendedApps: allEntries.slice(0, 4)
+    readonly property var recentApps: {
+        const out = [];
+        for (let i = 0; i < recentIds.length && out.length < 4; i++) {
+            const match = allEntries.find(a => a.id === recentIds[i]);
+            if (match) out.push(match);
+        }
+        return out;
+    }
 
     function updateFilter(): void {
         const q = searchField.text.trim().toLowerCase();
@@ -83,9 +117,11 @@ PanelWindow {
         } else {
             filteredEntries = allEntries.filter(app => {
                 const name = (app.name ?? "").toLowerCase();
+                const generic = (app.genericName ?? "").toLowerCase();
                 const comment = (app.comment ?? "").toLowerCase();
                 const id = (app.id ?? "").toLowerCase();
-                return name.includes(q) || comment.includes(q) || id.includes(q);
+                const kw = Array.isArray(app.keywords) ? app.keywords.join(" ").toLowerCase() : "";
+                return name.includes(q) || generic.includes(q) || comment.includes(q) || id.includes(q) || kw.includes(q);
             }).slice(0, 30);
         }
         selectedIndex = 0;
@@ -95,17 +131,19 @@ PanelWindow {
         const q = searchField.text.trim();
         if (filteredEntries.length > 0 && selectedIndex >= 0 && selectedIndex < filteredEntries.length) {
             const target = filteredEntries[selectedIndex];
+            recordRecent(target.id ?? "");
             Config.launcherOpen = false;
             target.execute();
         } else if (q.length > 0) {
             Config.launcherOpen = false;
             const cmd = q.startsWith(":") ? q.slice(1).trim() : q;
-            Quickshell.execDetached(["sh", "-c", cmd]);
+            if (cmd.length > 0) Quickshell.execDetached(["sh", "-c", cmd]);
         }
     }
 
     function launchApp(app: var): void {
         if (!app) return;
+        recordRecent(app.id ?? "");
         Config.launcherOpen = false;
         app.execute();
     }
@@ -158,8 +196,8 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: -16 + Math.round((1.0 - root.openProgress) * (Config.launcherOpen ? 20 : 12))
-        width: 656
-        height: 556
+        width: Math.min(656, Math.max(360, root.width - 32))
+        height: Math.min(556, Math.max(340, root.height - 64))
         radius: 14
         color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.97)
         border.width: 1
@@ -167,6 +205,7 @@ PanelWindow {
         opacity: Math.pow(root.openProgress, 1.15)
         scale: 0.94 + (0.06 * root.openProgress)
         clip: true
+        Keys.onEscapePressed: Config.launcherOpen = false
 
         Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
@@ -246,10 +285,13 @@ PanelWindow {
 
                         Rectangle {
                             visible: searchField.text.length > 0
-                            implicitWidth: 22
-                            implicitHeight: 22
+                            implicitWidth: 26
+                            implicitHeight: 26
                             radius: 6
-                            color: Theme.surfaceContainer
+                            color: clearSearchM.containsMouse ? Theme.surfaceContainerHigh : Theme.surfaceContainer
+                            activeFocusOnTab: searchField.text.length > 0 && Config.launcherOpen
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Bersihkan pencarian"
 
                             MatIcon {
                                 anchors.centerIn: parent
@@ -259,13 +301,21 @@ PanelWindow {
                             }
 
                             MouseArea {
+                                id: clearSearchM
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     searchField.text = "";
                                     root.updateFilter();
                                     searchField.forceActiveFocus();
                                 }
+                            }
+
+                            Keys.onReturnPressed: {
+                                searchField.text = "";
+                                root.updateFilter();
+                                searchField.forceActiveFocus();
                             }
                         }
                     }
@@ -292,7 +342,7 @@ PanelWindow {
                     anchors.margins: 14
                     clip: true
                     spacing: 4
-                    visible: searchField.text.trim().length > 0
+                    visible: searchField.text.trim().length > 0 && root.filteredEntries.length > 0
                     model: root.filteredEntries
 
                     delegate: Rectangle {
@@ -340,7 +390,7 @@ PanelWindow {
                                 }
 
                                 Text {
-                                    text: searchRow.modelData.comment || "Application"
+                                    text: searchRow.modelData.comment || searchRow.modelData.genericName || "Aplikasi"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: Theme.subtext
@@ -358,7 +408,7 @@ PanelWindow {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Open ↵"
+                                    text: "Buka ↵"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.DemiBold
@@ -380,6 +430,87 @@ PanelWindow {
                     }
                 }
 
+                // Empty State: Direct Shell Command Action
+                Item {
+                    id: cmdEmptyWrap
+                    anchors.fill: parent
+                    anchors.margins: 18
+                    visible: searchField.text.trim().length > 0 && root.filteredEntries.length === 0
+
+                    readonly property string rawQuery: searchField.text.trim()
+                    readonly property string shellCmd: rawQuery.startsWith(":") ? rawQuery.slice(1).trim() : rawQuery
+
+                    Rectangle {
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: 54
+                        radius: 10
+                        color: cmdFallbackM.containsMouse ? Theme.surfaceContainerHigh : Theme.surfaceContainer
+                        border.width: 1
+                        border.color: Theme.accent
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            spacing: 12
+
+                            MatIcon {
+                                icon: "terminal"
+                                size: 20
+                                color: Theme.accentInk
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: "Jalankan perintah shell"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 13
+                                    font.weight: Font.DemiBold
+                                    color: Theme.text
+                                }
+
+                                Text {
+                                    text: cmdEmptyWrap.shellCmd
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 11
+                                    color: Theme.subtext
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+
+                            Rectangle {
+                                implicitWidth: 74
+                                implicitHeight: 24
+                                radius: 6
+                                color: Theme.accent
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Jalankan ↵"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.DemiBold
+                                    color: Theme.accentOnFill
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: cmdFallbackM
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.launchSelected()
+                        }
+                    }
+                }
+
                 // All Applications Alphabetical
                 ColumnLayout {
                     anchors.fill: parent
@@ -393,9 +524,12 @@ PanelWindow {
 
                         Rectangle {
                             implicitWidth: backBtn.implicitWidth + 14
-                            implicitHeight: 26
+                            implicitHeight: 28
                             radius: 7
                             color: backHover.containsMouse ? Theme.surfaceContainer : Theme.surface
+                            activeFocusOnTab: root.showAllApps && Config.launcherOpen
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Kembali ke daftar utama"
 
                             RowLayout {
                                 id: backBtn
@@ -424,6 +558,9 @@ PanelWindow {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.showAllApps = false
                             }
+
+                            Keys.onReturnPressed: root.showAllApps = false
+                            Keys.onSpacePressed: root.showAllApps = false
                         }
 
                         Item { Layout.fillWidth: true }
@@ -498,7 +635,7 @@ PanelWindow {
                         Layout.fillWidth: true
 
                         Text {
-                            text: "Pinned"
+                            text: "Aplikasi Utama"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
@@ -509,9 +646,12 @@ PanelWindow {
 
                         Rectangle {
                             implicitWidth: allLabel.implicitWidth + 14
-                            implicitHeight: 24
+                            implicitHeight: 28
                             radius: 7
                             color: allBtnM.containsMouse ? Theme.surfaceContainer : Theme.surface
+                            activeFocusOnTab: !root.showAllApps && searchField.text.trim().length === 0 && Config.launcherOpen
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Lihat semua aplikasi"
 
                             RowLayout {
                                 id: allLabel
@@ -540,6 +680,9 @@ PanelWindow {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.showAllApps = true
                             }
+
+                            Keys.onReturnPressed: root.showAllApps = true
+                            Keys.onSpacePressed: root.showAllApps = true
                         }
                     }
 
@@ -602,9 +745,10 @@ PanelWindow {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 2
+                        visible: root.recentApps.length > 0
 
                         Text {
-                            text: "Rekomendasi"
+                            text: "Terakhir Dibuka"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
@@ -614,12 +758,13 @@ PanelWindow {
 
                     GridLayout {
                         Layout.fillWidth: true
+                        visible: root.recentApps.length > 0
                         columns: 2
                         rowSpacing: 6
                         columnSpacing: 10
 
                         Repeater {
-                            model: root.recommendedApps
+                            model: root.recentApps
 
                             Rectangle {
                                 id: recTile
@@ -629,6 +774,9 @@ PanelWindow {
                                 implicitHeight: 46
                                 radius: 9
                                 color: recM.containsMouse ? Theme.surfaceContainer : Theme.surface
+                                activeFocusOnTab: !root.showAllApps && searchField.text.trim().length === 0 && Config.launcherOpen
+                                Accessible.role: Accessible.Button
+                                Accessible.name: recTile.modelData.name ?? "Aplikasi"
 
                                 Behavior on color { ColorAnimation { duration: 90 } }
 
@@ -660,7 +808,7 @@ PanelWindow {
                                         }
 
                                         Text {
-                                            text: recTile.modelData.comment || "Aplikasi"
+                                            text: recTile.modelData.comment || recTile.modelData.genericName || "Aplikasi"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
                                             color: Theme.subtext
@@ -677,6 +825,9 @@ PanelWindow {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: root.launchApp(recTile.modelData)
                                 }
+
+                                Keys.onReturnPressed: root.launchApp(recTile.modelData)
+                                Keys.onSpacePressed: root.launchApp(recTile.modelData)
                             }
                         }
                     }
@@ -764,7 +915,7 @@ PanelWindow {
                         }
 
                         Text {
-                            text: "KINFAEL · CachyOS"
+                            text: "SORA · " + (Quickshell.env("XDG_CURRENT_DESKTOP") || "Hyprland")
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             color: Theme.subtext
@@ -778,6 +929,9 @@ PanelWindow {
                         implicitHeight: 32
                         radius: 8
                         color: setM.containsMouse ? Theme.surfaceContainer : "transparent"
+                        activeFocusOnTab: Config.launcherOpen
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Buka Dashboard Pengaturan"
 
                         MatIcon {
                             anchors.centerIn: parent
@@ -796,6 +950,9 @@ PanelWindow {
                                 Config.toggleDashboard();
                             }
                         }
+
+                        Keys.onReturnPressed: { Config.launcherOpen = false; Config.toggleDashboard(); }
+                        Keys.onSpacePressed: { Config.launcherOpen = false; Config.toggleDashboard(); }
                     }
 
                     Rectangle {
@@ -807,6 +964,9 @@ PanelWindow {
                             : (pwrM.containsMouse ? Theme.surfaceContainerHigh : "transparent")
                         border.width: (pwrM.containsMouse && !pwrM.pressed) ? 1 : 0
                         border.color: Theme.urgentInk
+                        activeFocusOnTab: Config.launcherOpen
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Buka Menu Daya"
 
                         MatIcon {
                             anchors.centerIn: parent
@@ -827,6 +987,9 @@ PanelWindow {
                                 Config.togglePowerMenu();
                             }
                         }
+
+                        Keys.onReturnPressed: { Config.launcherOpen = false; Config.togglePowerMenu(); }
+                        Keys.onSpacePressed: { Config.launcherOpen = false; Config.togglePowerMenu(); }
                     }
                 }
             }

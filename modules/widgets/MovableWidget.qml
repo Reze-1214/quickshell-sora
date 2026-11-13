@@ -56,6 +56,9 @@ Item {
         }
     }
 
+    onDefaultXChanged: syncPosition(false)
+    onDefaultYChanged: syncPosition(false)
+
     Component.onCompleted: {
         syncPosition(false);
         Qt.callLater(() => { _animatePos = true; });
@@ -91,16 +94,18 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-        drag.target: root
+        drag.target: Config.widgetEditMode ? root : null
         drag.filterChildren: true
         drag.threshold: 5
         drag.axis: Drag.XAndYAxis
         drag.minimumX: 10
-        drag.maximumX: (root.parent ? root.parent.width : 1366) - root.width - 10
+        drag.maximumX: (root.parent ? root.parent.width : Config.desktopWidth) - root.width - 10
         drag.minimumY: Config.barHeight + 8
-        drag.maximumY: (root.parent ? root.parent.height : 768) - root.height - 10
+        drag.maximumY: (root.parent ? root.parent.height : Config.desktopHeight) - root.height - 10
 
-        cursorShape: root.isMoving ? Qt.ClosedHandCursor : (dragArea.containsMouse ? Qt.OpenHandCursor : Qt.ArrowCursor)
+        cursorShape: !Config.widgetEditMode
+            ? Qt.ArrowCursor
+            : (root.isMoving ? Qt.ClosedHandCursor : (dragArea.containsMouse ? Qt.OpenHandCursor : Qt.ArrowCursor))
 
         onPressed: (mouse) => {
             if (mouse.button === Qt.RightButton) {
@@ -118,9 +123,9 @@ Item {
         anchors.fill: parent
         radius: 18
         color: "transparent"
-        border.color: Theme.accentInk
-        border.width: 1.5
-        visible: root.isMoving
+        border.color: root.isMoving ? Theme.accentInk : Qt.alpha(Theme.accentInk, 0.55)
+        border.width: root.isMoving ? 2 : 1
+        visible: root.isMoving || Config.widgetEditMode
         z: 70
     }
 }

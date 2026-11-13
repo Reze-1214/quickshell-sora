@@ -23,12 +23,12 @@ PanelWindow {
         top: Config.barMarginTop + Config.barHeight - 8
     }
 
-    implicitWidth: 716
+    readonly property int cardWidth: Math.min(688, Math.max(360, Screen.width - 28))
+    readonly property int cardHeight: 320
+
+    implicitWidth: cardWidth + 28
     implicitHeight: 356
     color: "transparent"
-
-    readonly property int cardWidth: 688
-    readonly property int cardHeight: 320
 
     property real openProgress: Config.centerPopoverOpen ? 1.0 : 0.0
     Behavior on openProgress {
@@ -77,7 +77,7 @@ PanelWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             width: root.cardWidth
             height: root.cardHeight
-            radius: 14
+            radius: 18
             color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
             border.width: 1
             border.color: Theme.outlineStrong
@@ -97,7 +97,7 @@ PanelWindow {
                     NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
                 }
 
-                // Page 0: Calendar, Clock & KINFAEL Identity
+                // Page 0: Calendar, Clock & Sora Identity
                 ProfileCard {
                     width: root.cardWidth
                     height: root.cardHeight

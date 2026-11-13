@@ -225,12 +225,12 @@ PanelWindow {
                             preventStealing: true
                             cursorShape: Qt.PointingHandCursor
                             onPressed: mouse => {
-                                Brightness.setBrightness(Math.max(1, Math.min(100, Math.round((mouse.x / Math.max(1, width)) * 100))));
+                                Brightness.setBrightness(Math.max(5, Math.min(100, Math.round((mouse.x / Math.max(1, width)) * 100))));
                                 hideTimer.restart();
                             }
                             onPositionChanged: mouse => {
                                 if (pressed) {
-                                    Brightness.setBrightness(Math.max(1, Math.min(100, Math.round((mouse.x / Math.max(1, width)) * 100))));
+                                    Brightness.setBrightness(Math.max(5, Math.min(100, Math.round((mouse.x / Math.max(1, width)) * 100))));
                                     hideTimer.restart();
                                 }
                             }

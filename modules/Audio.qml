@@ -33,7 +33,7 @@ Item {
         }
 
         Text {
-            text: root.muted ? "Mute" : `${Math.round(root.volume * 100)}%`
+            text: root.muted ? "Muted" : `${Math.round(root.volume * 100)}%`
             font.family: Theme.fontFamily
             font.pixelSize: 11
             font.weight: Font.Medium

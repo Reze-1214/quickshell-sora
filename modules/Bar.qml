@@ -32,6 +32,11 @@ PanelWindow {
     implicitHeight: Config.barHeight
     color: "transparent"
 
+    IdleInhibitor {
+        enabled: Config.caffeineEnabled
+        window: root
+    }
+
     readonly property var activeClient: Hyprland.activeToplevel
     readonly property string rawTitle: activeClient?.title ?? ""
     readonly property string appClass: activeClient?.lastIpcObject?.class ?? ""
@@ -47,6 +52,7 @@ PanelWindow {
     }
 
     Item {
+        id: barContent
         anchors.fill: parent
 
         // ====================================================================
@@ -60,6 +66,7 @@ PanelWindow {
 
             // Clean Round CachyOS Logo Button
             Item {
+                id: cachyWrap
                 implicitWidth: Config.pillHeight
                 implicitHeight: Config.pillHeight
 
@@ -109,9 +116,20 @@ PanelWindow {
                 }
             }
 
-            Workspaces {}
+            Workspaces {
+                id: workspacesPill
+            }
 
-            ActiveWindow {}
+            ActiveWindow {
+                maxAvailableWidth: Math.max(
+                    110,
+                    Math.floor((barContent.width - centerIsland.width) / 2)
+                        - cachyWrap.implicitWidth
+                        - workspacesPill.implicitWidth
+                        - (leftArea.spacing * 2)
+                        - 12
+                )
+            }
         }
 
         // ====================================================================

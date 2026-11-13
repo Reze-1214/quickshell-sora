@@ -336,6 +336,225 @@ PanelWindow {
         }
     }
 
+    component ModeCell: Rectangle {
+        id: modeRoot
+        property string icon: ""
+        property string activeIcon: ""
+        property string label: ""
+        property bool checked: false
+        signal triggered()
+
+        activeFocusOnTab: true
+        Accessible.role: Accessible.CheckBox
+        Accessible.name: label
+        Accessible.checked: checked
+        color: modeMa.pressed
+            ? Qt.alpha(root.colText, 0.08)
+            : (modeMa.containsMouse ? Qt.alpha(root.colText, 0.04) : "transparent")
+        border.width: activeFocus ? 1 : 0
+        border.color: Qt.alpha(root.colAccentInk, 0.72)
+        Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
+
+        RowLayout {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth, parent.width - 12)
+            spacing: 6
+
+            MatIcon {
+                icon: modeRoot.checked && modeRoot.activeIcon.length > 0 ? modeRoot.activeIcon : modeRoot.icon
+                size: 15
+                fill: modeRoot.checked ? 1.0 : 0.0
+                color: modeRoot.checked ? root.colAccentInk : root.colSubtext
+            }
+
+            Text {
+                text: modeRoot.label
+                font.family: root.uiFont
+                font.pixelSize: 11
+                font.weight: modeRoot.checked ? Font.DemiBold : Font.Medium
+                color: modeRoot.checked ? root.colAccentInk : Qt.alpha(root.colText, 0.78)
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+        }
+
+        MouseArea {
+            id: modeMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: modeRoot.triggered()
+        }
+        Keys.onReturnPressed: event => { modeRoot.triggered(); event.accepted = true; }
+        Keys.onSpacePressed: event => { modeRoot.triggered(); event.accepted = true; }
+    }
+
+    component AudioSwitchButton: Rectangle {
+        id: swBtnRoot
+        property string label: ""
+        property string panelKey: ""
+        property bool muted: false
+        property string deviceName: ""
+        readonly property bool isOpen: Config.activeSubPanel === panelKey
+
+        Layout.preferredWidth: 66
+        implicitHeight: 24
+        radius: 5
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: `Switch ${label} (${deviceName})`
+        color: isOpen
+            ? Qt.alpha(root.colAccent, 0.14)
+            : (swBtnMa.containsMouse || activeFocus ? Qt.alpha(root.colText, 0.06) : "transparent")
+        border.width: activeFocus ? 1 : 0
+        border.color: Qt.alpha(root.colAccentInk, 0.72)
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 3
+            anchors.rightMargin: 2
+            spacing: 2
+
+            Text {
+                text: swBtnRoot.label
+                font.family: root.uiFont
+                font.pixelSize: 12
+                font.weight: Font.Medium
+                color: swBtnRoot.muted ? root.colSubtext : root.colText
+                Layout.fillWidth: true
+            }
+
+            MatIcon {
+                icon: "expand_more"
+                size: 14
+                rotation: swBtnRoot.isOpen ? 180 : 0
+                color: swBtnRoot.isOpen ? root.colAccentInk : root.colSubtext
+                Behavior on rotation { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            }
+        }
+
+        MouseArea {
+            id: swBtnMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.toggleSubPanel(swBtnRoot.panelKey)
+        }
+        Keys.onReturnPressed: event => { root.toggleSubPanel(swBtnRoot.panelKey); event.accepted = true; }
+        Keys.onSpacePressed: event => { root.toggleSubPanel(swBtnRoot.panelKey); event.accepted = true; }
+    }
+
+    component AudioDeviceDrawer: Rectangle {
+        id: drawerRoot
+        property bool open: false
+        property string emptyText: "No devices available"
+        property var devices: []
+        property var currentDevice: null
+        signal deviceSelected(var node)
+
+        Layout.fillWidth: true
+        Layout.leftMargin: -16
+        Layout.rightMargin: -16
+        visible: open
+        implicitHeight: open ? (drawerCol.implicitHeight + 16) : 0
+        color: root.colDrawerTint
+        clip: true
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 1
+            color: root.colHairline
+        }
+
+        ColumnLayout {
+            id: drawerCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            anchors.topMargin: 8
+            spacing: 2
+
+            Text {
+                visible: drawerRoot.devices.length === 0
+                text: drawerRoot.emptyText
+                font.family: root.uiFont
+                font.pixelSize: 11
+                color: root.colSubtext
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                Layout.bottomMargin: 2
+            }
+
+            Repeater {
+                model: drawerRoot.devices
+
+                Rectangle {
+                    id: devRow
+                    required property var modelData
+                    readonly property bool isCurrent: !!drawerRoot.currentDevice && !!modelData && drawerRoot.currentDevice.id === modelData.id
+
+                    Layout.fillWidth: true
+                    implicitHeight: 28
+                    radius: 6
+                    activeFocusOnTab: drawerRoot.open || activeFocus
+                    Accessible.role: Accessible.Button
+                    Accessible.name: AudioService.nodeLabel(modelData)
+                    color: isCurrent
+                        ? Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.14 : 0.11)
+                        : (devMa.containsMouse || activeFocus ? Qt.alpha(root.colText, 0.06) : "transparent")
+                    border.width: activeFocus ? 1 : 0
+                    border.color: Qt.alpha(root.colAccentInk, 0.72)
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        spacing: 8
+
+                        MatIcon {
+                            icon: devRow.isCurrent ? "check_circle" : "radio_button_unchecked"
+                            size: 14
+                            fill: devRow.isCurrent ? 1.0 : 0.0
+                            color: devRow.isCurrent ? root.colAccentInk : root.colSubtext
+                        }
+
+                        Text {
+                            text: AudioService.nodeLabel(devRow.modelData)
+                            font.family: root.uiFont
+                            font.pixelSize: 11
+                            font.weight: devRow.isCurrent ? Font.DemiBold : Font.Normal
+                            color: devRow.isCurrent ? root.colText : root.colSubtext
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: devMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: drawerRoot.deviceSelected(devRow.modelData)
+                    }
+                    Keys.onReturnPressed: event => { drawerRoot.deviceSelected(devRow.modelData); event.accepted = true; }
+                    Keys.onSpacePressed: event => { drawerRoot.deviceSelected(devRow.modelData); event.accepted = true; }
+                }
+            }
+        }
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 1
+            color: root.colHairline
+        }
+    }
+
     // ========================================================================
     // CORE STATE & THEME TOKENS (SINGLE UNIFIED SORA CANVAS)
     // ========================================================================
@@ -791,7 +1010,7 @@ PanelWindow {
                         spacing: 6
 
                         Text {
-                            text: "KINFAEL"
+                            text: "SORA"
                             font.family: root.uiFont
                             font.pixelSize: 10
                             font.weight: Font.Medium
@@ -815,7 +1034,7 @@ PanelWindow {
                             idleBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.14) : Qt.alpha(Theme.surface, 0.72)
                             hoverBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.44) : Theme.surface
                             dangerBg: Theme.isDarkMode ? Qt.alpha("#42191D", 0.62) : Qt.alpha(Theme.surface, 0.92)
-                            accessName: RecorderService.isRecording ? "Hentikan Rekam Layar" : "Rekam Layar (Kiri: Area, Kanan: Penuh + Mic)"
+                            accessName: RecorderService.isRecording ? "Stop screen recording" : "Screen record (Left: Region, Right: Fullscreen + Mic)"
                             mouseButtons: Qt.LeftButton | Qt.RightButton
                             onTriggered: {
                                 if (RecorderService.isRecording) {
@@ -3443,7 +3662,7 @@ PanelWindow {
                         }
 
                         // ====================================================
-                        // 4. QUICK MODES STRIP (DND | 1px HAIRLINE | NIGHT LIGHT)
+                        // 4. QUICK MODES STRIP (DND | NIGHT LIGHT | KEEP AWAKE)
                         // On-canvas cells without separate floating box chrome
                         // ====================================================
                         Item {
@@ -3451,160 +3670,56 @@ PanelWindow {
                             Layout.fillWidth: true
                             implicitHeight: 38
 
-                            readonly property int halfW: Math.floor((width - 1) / 2)
+                            readonly property int cellW: Math.floor((width - 2) / 3)
 
-                            // Do Not Disturb
-                            Rectangle {
-                                id: dndToggle
+                            ModeCell {
                                 x: 0
                                 y: 0
-                                width: modesStrip.halfW
+                                width: modesStrip.cellW
                                 height: parent.height
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Do Not Disturb"
-                                Accessible.checked: Config.dndEnabled
-                                color: Config.dndEnabled
-                                    ? Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.11 : 0.09)
-                                    : (dndMouse.containsMouse ? Qt.alpha(root.colText, 0.04) : "transparent")
-                                border.width: activeFocus ? 1 : 0
-                                border.color: Qt.alpha(root.colAccentInk, 0.72)
-                                Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 16
-                                    anchors.rightMargin: 14
-                                    spacing: 7
-
-                                    MatIcon {
-                                        icon: Config.dndEnabled ? "notifications_off" : "notifications"
-                                        size: 16
-                                        fill: Config.dndEnabled ? 1.0 : 0.0
-                                        color: Config.dndEnabled ? root.colAccentInk : root.colSubtext
-                                    }
-
-                                    Text {
-                                        text: "Do Not Disturb"
-                                        font.family: root.uiFont
-                                        font.pixelSize: 12
-                                        font.weight: Config.dndEnabled ? Font.DemiBold : Font.Medium
-                                        color: Config.dndEnabled ? root.colText : Qt.alpha(root.colText, 0.90)
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
-
-                                    RowLayout {
-                                        spacing: 4
-
-                                        Rectangle {
-                                            visible: Config.dndEnabled
-                                            width: 5
-                                            height: 5
-                                            radius: 2.5
-                                            color: root.colAccentInk
-                                        }
-
-                                        Text {
-                                            text: Config.dndEnabled ? "On" : "Off"
-                                            font.family: root.uiFont
-                                            font.pixelSize: 11
-                                            font.weight: Config.dndEnabled ? Font.DemiBold : Font.Normal
-                                            color: Config.dndEnabled ? root.colAccentInk : root.colSubtext
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: dndMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Config.dndEnabled = !Config.dndEnabled
-                                }
-                                Keys.onReturnPressed: event => { Config.dndEnabled = !Config.dndEnabled; event.accepted = true; }
-                                Keys.onSpacePressed: event => { Config.dndEnabled = !Config.dndEnabled; event.accepted = true; }
+                                icon: "notifications"
+                                activeIcon: "notifications_off"
+                                label: "Do Not Disturb"
+                                checked: Config.dndEnabled
+                                onTriggered: Config.dndEnabled = !Config.dndEnabled
                             }
 
                             Rectangle {
-                                x: modesStrip.halfW
+                                x: modesStrip.cellW
                                 y: 8
                                 width: 1
                                 height: parent.height - 16
                                 color: root.colHairline
                             }
 
-                            // Night Light
-                            Rectangle {
-                                id: nlToggle
-                                x: modesStrip.halfW + 1
+                            ModeCell {
+                                x: modesStrip.cellW + 1
                                 y: 0
-                                width: parent.width - modesStrip.halfW - 1
+                                width: modesStrip.cellW
                                 height: parent.height
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Night Light"
-                                Accessible.checked: Config.nightLightEnabled
-                                color: Config.nightLightEnabled
-                                    ? Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.11 : 0.09)
-                                    : (nlMouse.containsMouse ? Qt.alpha(root.colText, 0.04) : "transparent")
-                                border.width: activeFocus ? 1 : 0
-                                border.color: Qt.alpha(root.colAccentInk, 0.72)
-                                Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                                icon: "nightlight"
+                                label: "Night Light"
+                                checked: Config.nightLightEnabled
+                                onTriggered: Config.toggleNightLight()
+                            }
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 14
-                                    anchors.rightMargin: 16
-                                    spacing: 7
+                            Rectangle {
+                                x: (modesStrip.cellW * 2) + 1
+                                y: 8
+                                width: 1
+                                height: parent.height - 16
+                                color: root.colHairline
+                            }
 
-                                    MatIcon {
-                                        icon: "nightlight"
-                                        size: 16
-                                        fill: Config.nightLightEnabled ? 1.0 : 0.0
-                                        color: Config.nightLightEnabled ? root.colAccentInk : root.colSubtext
-                                    }
-
-                                    Text {
-                                        text: "Night Light"
-                                        font.family: root.uiFont
-                                        font.pixelSize: 12
-                                        font.weight: Config.nightLightEnabled ? Font.DemiBold : Font.Medium
-                                        color: Config.nightLightEnabled ? root.colText : Qt.alpha(root.colText, 0.90)
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
-
-                                    RowLayout {
-                                        spacing: 4
-
-                                        Rectangle {
-                                            visible: Config.nightLightEnabled
-                                            width: 5
-                                            height: 5
-                                            radius: 2.5
-                                            color: root.colAccentInk
-                                        }
-
-                                        Text {
-                                            text: Config.nightLightEnabled ? "On" : "Off"
-                                            font.family: root.uiFont
-                                            font.pixelSize: 11
-                                            font.weight: Config.nightLightEnabled ? Font.DemiBold : Font.Normal
-                                            color: Config.nightLightEnabled ? root.colAccentInk : root.colSubtext
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: nlMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Config.toggleNightLight()
-                                }
-                                Keys.onReturnPressed: event => { Config.toggleNightLight(); event.accepted = true; }
-                                Keys.onSpacePressed: event => { Config.toggleNightLight(); event.accepted = true; }
+                            ModeCell {
+                                x: (modesStrip.cellW * 2) + 2
+                                y: 0
+                                width: parent.width - ((modesStrip.cellW * 2) + 2)
+                                height: parent.height
+                                icon: "coffee"
+                                label: "Keep Awake"
+                                checked: Config.caffeineEnabled
+                                onTriggered: Config.toggleCaffeine()
                             }
 
                             Rectangle {
@@ -3655,13 +3770,11 @@ PanelWindow {
                                         onTriggered: AudioService.toggleMute()
                                     }
 
-                                    Text {
-                                        text: "Output"
-                                        font.family: root.uiFont
-                                        font.pixelSize: 12
-                                        font.weight: Font.Medium
-                                        color: AudioService.muted ? root.colSubtext : root.colText
-                                        Layout.preferredWidth: 62
+                                    AudioSwitchButton {
+                                        label: "Output"
+                                        panelKey: "audio_out"
+                                        muted: AudioService.muted
+                                        deviceName: AudioService.nodeLabel(AudioService.sink)
                                     }
 
                                     DashSlider {
@@ -3688,6 +3801,14 @@ PanelWindow {
                                     }
                                 }
 
+                                AudioDeviceDrawer {
+                                    open: Config.activeSubPanel === "audio_out"
+                                    emptyText: "No output devices found"
+                                    devices: AudioService.sinks
+                                    currentDevice: AudioService.sink
+                                    onDeviceSelected: node => AudioService.setDefaultSink(node)
+                                }
+
                                 // Microphone
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -3706,13 +3827,11 @@ PanelWindow {
                                         onTriggered: AudioService.toggleMicMute()
                                     }
 
-                                    Text {
-                                        text: "Mic"
-                                        font.family: root.uiFont
-                                        font.pixelSize: 12
-                                        font.weight: Font.Medium
-                                        color: AudioService.micMuted ? root.colSubtext : root.colText
-                                        Layout.preferredWidth: 62
+                                    AudioSwitchButton {
+                                        label: "Mic"
+                                        panelKey: "audio_in"
+                                        muted: AudioService.micMuted
+                                        deviceName: AudioService.nodeLabel(AudioService.source)
                                     }
 
                                     DashSlider {
@@ -3737,6 +3856,14 @@ PanelWindow {
                                         Layout.preferredWidth: 38
                                         horizontalAlignment: Text.AlignRight
                                     }
+                                }
+
+                                AudioDeviceDrawer {
+                                    open: Config.activeSubPanel === "audio_in"
+                                    emptyText: "No input devices found"
+                                    devices: AudioService.sources
+                                    currentDevice: AudioService.source
+                                    onDeviceSelected: node => AudioService.setDefaultSource(node)
                                 }
 
                                 // Subtle vertical breathing gap between Audio cluster & Display brightness
@@ -3769,7 +3896,7 @@ PanelWindow {
                                         font.pixelSize: 12
                                         font.weight: Font.Medium
                                         color: root.colText
-                                        Layout.preferredWidth: 62
+                                        Layout.preferredWidth: 66
                                     }
 
                                     DashSlider {
@@ -4172,10 +4299,10 @@ PanelWindow {
                                                     DashIconButton {
                                                         id: notifDismissBtn
                                                         icon: "close"
-                                                        iconSize: 13
-                                                        implicitWidth: 20
-                                                        implicitHeight: 20
-                                                        Layout.topMargin: -3
+                                                        iconSize: 14
+                                                        implicitWidth: 24
+                                                        implicitHeight: 24
+                                                        Layout.topMargin: -4
                                                         Layout.rightMargin: -2
                                                         opacity: (notifHover.hovered || notifDismissBtn.activeFocus) ? 1.0 : 0.45
                                                         destructive: true

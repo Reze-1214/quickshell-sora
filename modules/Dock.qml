@@ -54,27 +54,54 @@ PanelWindow {
 
     function openContextMenu(appBtn, globalX) {
         contextMenuApp = appBtn;
-        contextMenuX = Math.max(10, Math.min(dockCard.width - 168, globalX - 60));
+        const minX = Math.min(0, Math.round((dockCard.width - 168) * 0.5));
+        const maxX = Math.max(minX, dockCard.width - 168);
+        contextMenuX = Math.max(minX, Math.min(maxX, globalX - 60));
     }
 
     function closeContextMenu() {
         contextMenuApp = null;
     }
 
-    implicitWidth: Math.max(168, dockRow.implicitWidth + 20)
-    implicitHeight: root.contextMenuApp !== null ? 240 : 46
+    implicitWidth: Math.max(220, dockRow.implicitWidth + 60)
+    implicitHeight: root.contextMenuApp !== null ? 250 : 78
     color: "transparent"
 
     mask: Region {
-        x: root.dockExpanded ? 0 : Math.round((root.width - 50) * 0.5)
+        x: root.contextMenuApp !== null
+            ? 0
+            : (root.dockExpanded ? Math.max(0, Math.round((root.width - dockCardContainer.width) * 0.5)) : Math.round((root.width - 50) * 0.5))
         y: root.contextMenuApp !== null ? 0 : (root.dockExpanded ? (root.height - 46) : (root.height - 14))
-        width: root.dockExpanded ? root.width : 50
+        width: root.contextMenuApp !== null
+            ? root.width
+            : (root.dockExpanded ? dockCardContainer.width : 50)
         height: root.contextMenuApp !== null ? root.height : (root.dockExpanded ? 46 : 14)
+    }
+
+    function normalizeAppKey(rawClass: string): string {
+        const lower = (rawClass ?? "").toLowerCase().trim();
+        if (!lower) return "";
+        if (lower === "vesktop" || lower === "equibop" || lower.includes("discord")) return "discord";
+        if (lower.includes("spotify")) return "spotify";
+        if (lower === "footclient" || lower === "foot") return "foot";
+        if (lower === "org.kde.dolphin" || lower === "dolphin") return "dolphin";
+        if (lower === "thunar" || lower === "org.xfce.thunar") return "thunar";
+        if (lower === "org.mozilla.firefox" || lower.startsWith("firefox")) return "firefox";
+        if (lower === "code-oss" || lower === "code-url-handler" || lower === "visual-studio-code") return "code";
+        return lower;
+    }
+
+    function matchesAppKey(rawClass: string, appId: string): bool {
+        const w = normalizeAppKey(rawClass);
+        const a = normalizeAppKey(appId);
+        if (!w || !a) return false;
+        if (w === a) return true;
+        return w.split(".").includes(a) || a.split(".").includes(w);
     }
 
     // Unified running and pinned apps model
     readonly property var runningApps: {
-        const rightKeys = (Config.dockRightApps ?? []).map(a => a.id.toLowerCase());
+        const rightKeys = (Config.dockRightApps ?? []).map(a => normalizeAppKey(a.id));
         const ignoreKeys = ["org.quickshell", "quickshell", "fuzzel", "swappy", "wayfreeze"];
         const list = [];
         const seen = new Map();
@@ -82,7 +109,7 @@ PanelWindow {
         // 1. Configured favorite pinned apps always show first
         const pinned = Config.dockPinnedApps ?? [];
         for (let p of pinned) {
-            const key = p.id.toLowerCase();
+            const key = normalizeAppKey(p.id);
             const item = {
                 id: p.id,
                 cmd: p.cmd ?? p.id,
@@ -101,15 +128,16 @@ PanelWindow {
             const t = toplevels[i];
             const rawClass = t.wayland?.appId ?? (t.lastIpcObject?.class ?? "");
             if (!rawClass || rawClass.length === 0) continue;
-            const key = rawClass.toLowerCase();
-            if (ignoreKeys.some(ik => key.includes(ik))) continue;
-            if (rightKeys.some(rk => key.includes(rk))) continue;
+            const rawLower = rawClass.toLowerCase();
+            if (ignoreKeys.some(ik => rawLower.includes(ik))) continue;
+            const key = normalizeAppKey(rawClass);
+            if (rightKeys.some(rk => rk === key)) continue;
 
-            // Find existing matching pinned or running key (e.g. dolphin vs org.kde.dolphin)
+            // Find existing matching pinned or running key
             let matchedItem = seen.get(key);
             if (!matchedItem) {
                 for (let [k, val] of seen.entries()) {
-                    if (k === key || key.includes(k) || k.includes(key)) {
+                    if (matchesAppKey(rawClass, val.id)) {
                         matchedItem = val;
                         break;
                     }
@@ -137,14 +165,13 @@ PanelWindow {
 
     function getAllWindowsForApp(appId: string): var {
         if (!appId) return [];
-        const key = appId.toLowerCase();
         const list = [];
         const toplevels = Hyprland.toplevels?.values ?? [];
         for (let i = 0; i < toplevels.length; i++) {
             const t = toplevels[i];
-            const rawClass = (t.wayland?.appId ?? (t.lastIpcObject?.class ?? "")).toLowerCase();
+            const rawClass = t.wayland?.appId ?? (t.lastIpcObject?.class ?? "");
             if (!rawClass) continue;
-            if (rawClass === key || rawClass.includes(key) || key.includes(rawClass)) {
+            if (matchesAppKey(rawClass, appId)) {
                 list.push(t);
             }
         }
@@ -233,6 +260,44 @@ PanelWindow {
     }
 
     // ========================================================================
+    // SHARED DOCK TOOLTIP COMPONENT
+    // ========================================================================
+    component DockTooltip: Rectangle {
+        required property string tipText
+        required property bool shown
+
+        anchors.bottom: parent.top
+        anchors.bottomMargin: 8
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: opacity > 0.001
+        opacity: shown ? 1.0 : 0.0
+        z: 200
+
+        Behavior on opacity {
+            NumberAnimation { duration: 110 }
+        }
+
+        implicitWidth: Math.min(220, tipLabel.implicitWidth + 14)
+        implicitHeight: 22
+        radius: 6
+        color: Qt.alpha(Theme.background, 0.96)
+        border.width: 1
+        border.color: Theme.outlineStrong
+
+        Text {
+            id: tipLabel
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth, 206)
+            text: tipText
+            font.family: Theme.fontFamily
+            font.pixelSize: 10
+            font.weight: Font.Medium
+            color: Theme.text
+            elide: Text.ElideRight
+        }
+    }
+
+    // ========================================================================
     // REUSABLE APP BUTTON COMPONENT
     // ========================================================================
     component DockAppButton: Item {
@@ -246,6 +311,8 @@ PanelWindow {
 
         implicitWidth: 32
         implicitHeight: 34
+        Accessible.role: Accessible.Button
+        Accessible.name: btnRoot.appTitle || btnRoot.appId
 
         readonly property var appWindows: root.getAllWindowsForApp(appId)
         readonly property bool isRunning: appWindows.length > 0
@@ -264,46 +331,16 @@ PanelWindow {
             });
         }
 
-        // --------------------------------------------------------------------
-        // MICRO-TOOLTIP (Window Title / App Name)
-        // --------------------------------------------------------------------
-        Rectangle {
-            id: tooltipBubble
-            anchors.bottom: parent.top
-            anchors.bottomMargin: 8
-            anchors.horizontalCenter: parent.horizontalCenter
-            visible: opacity > 0.001
-            opacity: appMouseArea.containsMouse && root.contextMenuApp === null ? 1.0 : 0.0
-            z: 200
-
-            Behavior on opacity {
-                NumberAnimation { duration: 110 }
-            }
-
-            implicitWidth: Math.min(220, tooltipText.implicitWidth + 14)
-            implicitHeight: 22
-            radius: 6
-            color: Qt.alpha(Theme.background, 0.96)
-            border.width: 1
-            border.color: Theme.outlineStrong
-
-            Text {
-                id: tooltipText
-                anchors.centerIn: parent
-                text: {
-                    if (btnRoot.isRunning && btnRoot.appWindows.length > 0) {
-                        const winTitle = btnRoot.appWindows[0].title ?? (btnRoot.appWindows[0].lastIpcObject?.title ?? "");
-                        if (winTitle.length > 0) {
-                            return winTitle.length > 26 ? winTitle.substring(0, 24) + "…" : winTitle;
-                        }
+        DockTooltip {
+            shown: appMouseArea.containsMouse && root.contextMenuApp === null
+            tipText: {
+                if (btnRoot.isRunning && btnRoot.appWindows.length > 0) {
+                    const winTitle = btnRoot.appWindows[0].title ?? (btnRoot.appWindows[0].lastIpcObject?.title ?? "");
+                    if (winTitle.length > 0) {
+                        return winTitle.length > 26 ? winTitle.substring(0, 24) + "…" : winTitle;
                     }
-                    return btnRoot.appTitle || btnRoot.appId;
                 }
-                font.family: Theme.fontFamily
-                font.pixelSize: 10
-                font.weight: Font.Medium
-                color: Theme.text
-                elide: Text.ElideRight
+                return btnRoot.appTitle || btnRoot.appId;
             }
         }
 
@@ -350,13 +387,19 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: -4
                 hoverEnabled: true
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 cursorShape: Qt.PointingHandCursor
 
                 onClicked: mouse => {
                     if (mouse.button === Qt.RightButton) {
                         const mappedPos = mapToItem(dockCard, mouse.x, mouse.y);
                         root.openContextMenu(btnRoot, mappedPos.x);
+                    } else if (mouse.button === Qt.MiddleButton || (mouse.modifiers & Qt.ShiftModifier)) {
+                        root.closeContextMenu();
+                        if (btnRoot.targetWs > 0) {
+                            Hyprland.dispatch(`hl.dsp.focus({ workspace = "${btnRoot.targetWs}" })`);
+                        }
+                        Quickshell.execDetached([btnRoot.launchCmd]);
                     } else {
                         root.closeContextMenu();
                         if (!btnRoot.isRunning) {
@@ -572,6 +615,13 @@ PanelWindow {
                     Item {
                         implicitWidth: 28
                         implicitHeight: 32
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Buka Daftar Aplikasi"
+
+                        DockTooltip {
+                            shown: launchMouseArea.containsMouse && root.contextMenuApp === null
+                            tipText: Config.dockPinned ? "Daftar Aplikasi · Klik kanan lepas pin" : "Daftar Aplikasi · Klik kanan pin dock"
+                        }
 
                         Rectangle {
                             id: launchBtn
@@ -595,14 +645,19 @@ PanelWindow {
                                 size: 15
                                 color: Config.launcherOpen ? Theme.accentOnFill : Theme.accentInk
                             }
+                        }
 
-                            MouseArea {
-                                id: launchMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.closeContextMenu();
+                        MouseArea {
+                            id: launchMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mouse => {
+                                root.closeContextMenu();
+                                if (mouse.button === Qt.RightButton) {
+                                    Config.dockPinned = !Config.dockPinned;
+                                } else {
                                     Config.toggleLauncher();
                                 }
                             }
@@ -688,7 +743,7 @@ PanelWindow {
                     Rectangle {
                         width: parent.width
                         height: 24
-                        radius: 2
+                        radius: 6
                         color: optNewMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent"
 
                         Row {
@@ -732,7 +787,7 @@ PanelWindow {
                         visible: root.contextMenuApp?.isRunning ?? false
                         width: parent.width
                         height: 24
-                        radius: 2
+                        radius: 6
                         color: optMinMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent"
 
                         Row {
@@ -789,7 +844,7 @@ PanelWindow {
                         visible: root.contextMenuApp?.isRunning ?? false
                         width: parent.width
                         height: 24
-                        radius: 2
+                        radius: 6
                         color: optFloatMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent"
 
                         readonly property bool isFloating: root.contextMenuApp?.appWindows[0]?.lastIpcObject?.floating ?? false

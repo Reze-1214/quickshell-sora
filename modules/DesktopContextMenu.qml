@@ -27,8 +27,8 @@ PanelWindow {
         NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
     }
 
-    // Indices: 0..2 quick-launch tiles, 3..8 vertical menu rows
-    readonly property int itemCount: 9
+    // Indices: 0..2 quick-launch tiles, 3..9 vertical menu rows
+    readonly property int itemCount: 10
     property int focusedIndex: -1
     property bool keyboardNav: false
 
@@ -53,7 +53,10 @@ PanelWindow {
             break;
         case 1:
             Config.closeDesktopContextMenu();
-            Quickshell.execDetached(["thunar"]);
+            {
+                const filesApp = (Config.dockPinnedApps ?? []).find(a => a.title === "Files")?.cmd;
+                Quickshell.execDetached(filesApp ? [filesApp] : ["xdg-open", Quickshell.env("HOME")]);
+            }
             break;
         case 2:
             Config.closeDesktopContextMenu();
@@ -71,13 +74,18 @@ PanelWindow {
             Config.closeDesktopContextMenu();
             break;
         case 6:
-            Config.toggleWidgetManager();
+            if (!Config.widgetEditMode) Config.showDesktopWidgets = true;
+            Config.toggleWidgetEditMode();
+            Config.closeDesktopContextMenu();
             break;
         case 7:
+            Config.toggleWidgetManager();
+            break;
+        case 8:
             Config.closeDesktopContextMenu();
             Quickshell.execDetached(["hyprlock"]);
             break;
-        case 8:
+        case 9:
             Config.togglePowerMenu();
             break;
         }
@@ -204,7 +212,9 @@ PanelWindow {
 
         scale: 0.97 + 0.03 * root.openProgress
         opacity: root.openProgress
-        transformOrigin: Item.TopLeft
+        transformOrigin: root.flippedY
+            ? (root.flippedX ? Item.BottomRight : Item.BottomLeft)
+            : (root.flippedX ? Item.TopRight : Item.TopLeft)
 
         MouseArea {
             anchors.fill: parent
@@ -266,6 +276,12 @@ PanelWindow {
 
             MenuItem {
                 itemIndex: 6
+                icon: Config.widgetEditMode ? "lock" : "open_with"
+                label: Config.widgetEditMode ? "Kunci Posisi Widget" : "Atur Posisi Widget"
+            }
+
+            MenuItem {
+                itemIndex: 7
                 icon: "widgets"
                 label: "Atur Widget..."
             }
@@ -273,14 +289,14 @@ PanelWindow {
             MenuDivider {}
 
             MenuItem {
-                itemIndex: 7
+                itemIndex: 8
                 icon: "lock"
                 label: "Kunci Layar"
                 shortcut: "SUPER+L"
             }
 
             MenuItem {
-                itemIndex: 8
+                itemIndex: 9
                 icon: "power_settings_new"
                 label: "Menu Daya"
                 shortcut: "SUPER+SHIFT+E"
@@ -306,6 +322,8 @@ PanelWindow {
         color: pressed ? Theme.surfaceContainerHighest : (isHighlighted ? Theme.surfaceContainerHigh : Theme.surface)
         border.width: keyActive ? 1.5 : 0
         border.color: Theme.accentInk
+        Accessible.role: Accessible.Button
+        Accessible.name: tileRoot.label
 
         ColumnLayout {
             anchors.centerIn: parent
@@ -357,6 +375,8 @@ PanelWindow {
         Layout.fillWidth: true
         height: 31
         radius: 7
+        Accessible.role: Accessible.MenuItem
+        Accessible.name: itemRoot.label
         color: {
             if (destructive && pressed) return Theme.urgent;
             if (!isHighlighted) return "transparent";

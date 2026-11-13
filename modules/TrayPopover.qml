@@ -14,19 +14,23 @@ PanelWindow {
     WlrLayershell.namespace: "sora-tray-popover"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.keyboardFocus: Config.trayPopoverOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     anchors {
         top: true
         right: true
     }
 
+    readonly property int popoverWidth: 224
+    readonly property int maxMenuHeight: Math.max(200, Screen.height - Config.barMarginTop - Config.barHeight - 24)
+
     margins {
         top: Config.barMarginTop + Config.barHeight - 4
-        right: Math.max(8, Math.min(Screen.width - 196, Config.trayPopoverRightMargin - 6))
+        right: Math.max(8, Math.min(Screen.width - popoverWidth - 8, Config.trayPopoverRightMargin - 6))
     }
 
-    implicitWidth: 190
-    implicitHeight: Math.max(60, cardCol.implicitHeight + 24)
+    implicitWidth: popoverWidth
+    implicitHeight: Math.min(maxMenuHeight, Math.max(60, cardCol.implicitHeight + 24))
 
     property real openProgress: Config.trayPopoverOpen ? 1.0 : 0.0
     Behavior on openProgress {
@@ -79,11 +83,13 @@ PanelWindow {
         id: menuCard
         anchors.fill: parent
         anchors.margins: 6
-        radius: 10
-        color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
+        radius: 18
+        color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.95 : 0.97)
         border.width: 1
-        border.color: Theme.outlineStrong
+        border.color: Theme.outline
         clip: true
+        focus: Config.trayPopoverOpen
+        Keys.onEscapePressed: Config.trayPopoverOpen = false
 
         opacity: root.openProgress
         scale: 0.97 + (0.03 * root.openProgress)
@@ -94,101 +100,133 @@ PanelWindow {
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.margins: 6
-            spacing: 2
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 6
-                Layout.rightMargin: 6
-                Layout.topMargin: 3
-                Layout.bottomMargin: 3
-                spacing: 6
-
-                IconImage {
-                    implicitWidth: 13
-                    implicitHeight: 13
-                    asynchronous: true
-                    source: Config.resolveIcon(Config.activeTrayItem?.icon ?? "", "application-x-executable")
-                }
-
-                Text {
-                    text: {
-                        const rawId = Config.activeTrayItem?.id ?? "App";
-                        const clean = rawId.replace(/_status_icon.*$/, "").replace(/^[a-z]/, c => c.toUpperCase());
-                        return clean || "Aplikasi";
-                    }
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                    color: Theme.subtext
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-            }
+            anchors.margins: 8
+            spacing: 4
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
-                color: Theme.outline
-                Layout.bottomMargin: 1
-            }
+                implicitHeight: 32
+                radius: 12
+                color: Theme.surfaceContainerLow
 
-            Repeater {
-                id: menuRepeater
-                model: menuOpener.children
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 9
+                    anchors.rightMargin: 9
+                    spacing: 7
 
-                Item {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    implicitHeight: modelData.isSeparator ? 6 : 26
-                    visible: (modelData.text !== undefined && modelData.text.length > 0) || modelData.isSeparator
-
-                    Rectangle {
-                        visible: modelData.isSeparator
-                        anchors.centerIn: parent
-                        width: parent.width - 8
-                        height: 1
-                        color: Theme.outline
+                    IconImage {
+                        implicitWidth: 15
+                        implicitHeight: 15
+                        asynchronous: true
+                        source: Config.resolveIcon(Config.activeTrayItem?.icon ?? "", "application-x-executable")
                     }
 
-                    Rectangle {
-                        id: itemRow
-                        visible: !modelData.isSeparator
-                        anchors.fill: parent
-                        radius: 6
-                        color: itemMouse.containsMouse
-                            ? (isQuit ? Qt.alpha(Theme.urgentInk, 0.14) : Theme.surfaceContainer)
-                            : "transparent"
-
-                        readonly property bool isQuit: {
-                            const t = (modelData.text ?? "").toLowerCase();
-                            return t.includes("quit") || t.includes("exit") || t.includes("close") || t.includes("keluar") || t.includes("tutup");
+                    Text {
+                        text: {
+                            const rawId = Config.activeTrayItem?.id ?? "App";
+                            const clean = rawId.replace(/_status_icon.*$/, "").replace(/^[a-z]/, c => c.toUpperCase());
+                            return clean || "Aplikasi";
                         }
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        color: Theme.text
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+            }
 
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: 8
-                            anchors.right: parent.right
-                            anchors.rightMargin: 8
-                            text: (modelData.text ?? "").replace(/&/g, "")
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            font.weight: itemRow.isQuit ? Font.DemiBold : Font.Normal
-                            color: !modelData.enabled ? Theme.subtext : (itemRow.isQuit ? Theme.urgentInk : Theme.text)
-                            elide: Text.ElideRight
-                        }
+            Flickable {
+                visible: menuRepeater.count > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(menuListCol.implicitHeight, Math.max(80, root.maxMenuHeight - 54))
+                contentWidth: width
+                contentHeight: menuListCol.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
 
-                        MouseArea {
-                            id: itemMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: modelData.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: {
-                                if (modelData.enabled) {
-                                    modelData.triggered();
-                                    Config.trayPopoverOpen = false;
+                ColumnLayout {
+                    id: menuListCol
+                    width: parent.width
+                    spacing: 2
+
+                    Repeater {
+                        id: menuRepeater
+                        model: menuOpener.children
+
+                        Item {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            implicitHeight: modelData.isSeparator ? 6 : 26
+                            visible: (modelData.text !== undefined && modelData.text.length > 0) || modelData.isSeparator
+
+                            Rectangle {
+                                visible: modelData.isSeparator
+                                anchors.centerIn: parent
+                                width: parent.width - 8
+                                height: 1
+                                color: Theme.outline
+                            }
+
+                            Rectangle {
+                                id: itemRow
+                                visible: !modelData.isSeparator
+                                anchors.fill: parent
+                                radius: (itemMouse.containsMouse || itemRow.activeFocus) ? 12 : 8
+                                Behavior on radius { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                                activeFocusOnTab: modelData.enabled
+                                color: (itemMouse.containsMouse || itemRow.activeFocus)
+                                    ? (isQuit ? Qt.alpha(Theme.urgentInk, 0.14) : Theme.surfaceContainer)
+                                    : "transparent"
+
+                                readonly property bool isQuit: {
+                                    const t = (modelData.text ?? "").toLowerCase();
+                                    return t.includes("quit") || t.includes("exit") || t.includes("close") || t.includes("keluar") || t.includes("tutup");
+                                }
+
+                                Accessible.role: Accessible.MenuItem
+                                Accessible.name: (modelData.text ?? "").replace(/&/g, "")
+
+                                Keys.onReturnPressed: {
+                                    if (modelData.enabled) {
+                                        modelData.triggered();
+                                        Config.trayPopoverOpen = false;
+                                    }
+                                }
+                                Keys.onSpacePressed: {
+                                    if (modelData.enabled) {
+                                        modelData.triggered();
+                                        Config.trayPopoverOpen = false;
+                                    }
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8
+                                    text: (modelData.text ?? "").replace(/&/g, "")
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                    font.weight: itemRow.isQuit ? Font.DemiBold : Font.Normal
+                                    color: !modelData.enabled ? Theme.subtext : (itemRow.isQuit ? Theme.urgentInk : Theme.text)
+                                    elide: Text.ElideRight
+                                }
+
+                                MouseArea {
+                                    id: itemMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: modelData.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: {
+                                        if (modelData.enabled) {
+                                            modelData.triggered();
+                                            Config.trayPopoverOpen = false;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -197,11 +235,36 @@ PanelWindow {
             }
 
             Rectangle {
+                id: quitFallbackBtn
                 visible: menuRepeater.count === 0
                 Layout.fillWidth: true
                 implicitHeight: 26
-                radius: 6
-                color: quitMouse.containsMouse ? Qt.alpha(Theme.urgentInk, 0.14) : "transparent"
+                radius: (quitMouse.containsMouse || quitFallbackBtn.activeFocus) ? 12 : 8
+                Behavior on radius { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                activeFocusOnTab: true
+                color: (quitMouse.containsMouse || quitFallbackBtn.activeFocus) ? Qt.alpha(Theme.urgentInk, 0.14) : "transparent"
+
+                readonly property string knownProcess: {
+                    const idStr = (Config.activeTrayItem?.id ?? "").toLowerCase();
+                    if (idStr.includes("discord")) return "discord";
+                    if (idStr.includes("spotify")) return "spotify";
+                    if (idStr.includes("steam")) return "steam";
+                    return "";
+                }
+
+                Accessible.role: Accessible.MenuItem
+                Accessible.name: knownProcess !== "" ? "Tutup Aplikasi" : "Aktivasi Sekunder"
+
+                function triggerFallback() {
+                    Config.activeTrayItem?.secondaryActivate();
+                    if (knownProcess !== "") {
+                        Quickshell.execDetached(["pkill", "-x", knownProcess]);
+                    }
+                    Config.trayPopoverOpen = false;
+                }
+
+                Keys.onReturnPressed: triggerFallback()
+                Keys.onSpacePressed: triggerFallback()
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -209,11 +272,11 @@ PanelWindow {
                     anchors.leftMargin: 8
                     anchors.right: parent.right
                     anchors.rightMargin: 8
-                    text: "Tutup Aplikasi"
+                    text: quitFallbackBtn.knownProcess !== "" ? "Tutup Aplikasi" : "Aktivasi Sekunder"
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
-                    color: Theme.urgentInk
+                    color: quitFallbackBtn.knownProcess !== "" ? Theme.urgentInk : Theme.text
                     elide: Text.ElideRight
                 }
 
@@ -222,21 +285,7 @@ PanelWindow {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        Config.activeTrayItem?.secondaryActivate();
-                        const idStr = (Config.activeTrayItem?.id ?? "").toLowerCase();
-                        if (idStr.includes("discord")) {
-                            Quickshell.execDetached(["pkill", "-ix", "discord"]);
-                        } else if (idStr.includes("spotify")) {
-                            Quickshell.execDetached(["pkill", "-x", "spotify"]);
-                        } else if (idStr.includes("steam")) {
-                            Quickshell.execDetached(["pkill", "-x", "steam"]);
-                        } else if (idStr.length > 0) {
-                            const procName = idStr.replace(/_status_icon.*$/, "").replace(/^[a-z0-9.-]*-/, "");
-                            if (procName) Quickshell.execDetached(["pkill", "-ix", procName]);
-                        }
-                        Config.trayPopoverOpen = false;
-                    }
+                    onClicked: quitFallbackBtn.triggerFallback()
                 }
             }
         }

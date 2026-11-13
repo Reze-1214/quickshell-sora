@@ -162,7 +162,7 @@ ShellRoot {
         }
 
         function notify(summary: string, body: string): void {
-            notifDaemon.showPopup("KINFAEL", summary, body, null);
+            notifDaemon.showPopup("SORA", summary, body, null);
         }
 
         function brightnessUp(): void {

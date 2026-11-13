@@ -198,7 +198,7 @@ Item {
                         Text {
                             text: root.fmtTime(root.pos)
                             font.family: Theme.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             font.features: Theme.tabularFeatures
                             color: tray.colMuted
@@ -273,7 +273,7 @@ Item {
                         Text {
                             text: root.fmtTime(root.len)
                             font.family: Theme.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             font.features: Theme.tabularFeatures
                             color: tray.colMuted
@@ -285,7 +285,7 @@ Item {
             // 3. Right Vertical Transport Pod (Solid Accent When Active)
             Rectangle {
                 id: transportPod
-                Layout.preferredWidth: 44
+                Layout.preferredWidth: 50
                 Layout.fillWidth: false
                 Layout.fillHeight: true
                 radius: tray.innerRadius
@@ -363,7 +363,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: false
-                        Layout.preferredHeight: 25
+                        Layout.preferredHeight: 28
                         spacing: 0
 
                         Item {
@@ -377,7 +377,7 @@ Item {
                             MatIcon {
                                 anchors.centerIn: parent
                                 icon: "skip_previous"
-                                size: 13
+                                size: 15
                                 color: transportPod.fg
                                 opacity: prevMa.enabled ? 1.0 : 0.35
                             }
@@ -415,7 +415,7 @@ Item {
                             MatIcon {
                                 anchors.centerIn: parent
                                 icon: "skip_next"
-                                size: 13
+                                size: 15
                                 color: transportPod.fg
                                 opacity: nextMa.enabled ? 1.0 : 0.35
                             }

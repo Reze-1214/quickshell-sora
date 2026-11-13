@@ -72,6 +72,11 @@ Singleton {
     property bool volumeOsdOpen: false
     property bool dndEnabled: false
     property bool nightLightEnabled: false
+    property bool caffeineEnabled: false
+
+    function toggleCaffeine(): void {
+        caffeineEnabled = !caffeineEnabled;
+    }
 
     function toggleNightLight(): void {
         nightLightEnabled = !nightLightEnabled;
@@ -385,6 +390,8 @@ Singleton {
     property string _lastWidgetStateJson: ""
     property var widgetPositions: ({})
     property int widgetLayoutVersion: 0
+    property real desktopWidth: 1366
+    property real desktopHeight: 768
 
     property bool showDesktopWidgets: true
     property bool showWidgetBauhausDial: true
@@ -561,14 +568,15 @@ Singleton {
                 photoFrame:   { x: 14,  y: 550 }
             };
         } else if (presetName === "split") {
+            const rightX = Math.max(14, Math.round(desktopWidth - 294));
             widgetPositions = {
-                sunPhase:     { x: 14,   y: 56 },
-                bauhausDial:  { x: 14,   y: 164 },
-                netTelemetry: { x: 14,   y: 278 },
-                pulseHealth:  { x: 158,  y: 278 },
-                photoFrame:   { x: 14,   y: 374 },
-                mediaWave:    { x: 1072, y: 56 },
-                quickOps:     { x: 1072, y: 148 }
+                sunPhase:     { x: 14,     y: 56 },
+                bauhausDial:  { x: 14,     y: 164 },
+                netTelemetry: { x: 14,     y: 278 },
+                pulseHealth:  { x: 158,    y: 278 },
+                photoFrame:   { x: 14,     y: 374 },
+                mediaWave:    { x: rightX, y: 56 },
+                quickOps:     { x: rightX, y: 148 }
             };
         } else {
             return;

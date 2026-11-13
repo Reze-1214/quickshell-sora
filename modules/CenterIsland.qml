@@ -30,6 +30,7 @@ Item {
     readonly property string trackArtist: player?.trackArtist ?? ""
     readonly property string artUrl: player?.trackArtUrl ?? ""
     readonly property bool hasMedia: player !== null && trackTitle.length > 0
+    readonly property bool isSpotify: ((player?.identity ?? "") + " " + (player?.dbusName ?? "")).toLowerCase().includes("spotify")
 
     // Profile properties
     readonly property string userName: Quickshell.env("USER") || "user"
@@ -335,7 +336,7 @@ Item {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: "#1DB954"
+                                    color: root.isSpotify ? "#1DB954" : Theme.primaryContainer
                                 }
 
                                 Image {
@@ -352,9 +353,17 @@ Item {
                                     anchors.margins: 2
                                     source: `${Quickshell.env("HOME")}/.config/quickshell/sora/assets/spotify.svg`
                                     fillMode: Image.PreserveAspectFit
-                                    visible: albumArtThumb.status !== Image.Ready
+                                    visible: root.isSpotify && albumArtThumb.status !== Image.Ready
                                     smooth: true
                                     mipmap: true
+                                }
+
+                                MatIcon {
+                                    anchors.centerIn: parent
+                                    icon: "music_note"
+                                    size: 12
+                                    color: Theme.accentInk
+                                    visible: !root.isSpotify && albumArtThumb.status !== Image.Ready
                                 }
                             }
 
@@ -515,7 +524,7 @@ Item {
                                     width: 2.5
                                     radius: 1.25
                                     border.pixelAligned: true
-                                    color: "#1DB954"
+                                    color: root.isSpotify ? "#1DB954" : Theme.accent
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     SequentialAnimation on height {
@@ -735,6 +744,33 @@ Item {
         }
 
 
+
+        // Subtle 3-page indicator dots (shows scrollable pages on idle/hover)
+        Row {
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 2
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 4
+            visible: !RecorderService.isRecording
+            opacity: mouseArea.containsMouse || Config.centerPopoverOpen ? 0.9 : 0.38
+            z: 10
+
+            Behavior on opacity { NumberAnimation { duration: Theme.animFast } }
+
+            Repeater {
+                model: root.pageCount
+                Rectangle {
+                    required property int index
+                    readonly property bool isCurrent: index === root.currentPage
+                    width: isCurrent ? 10 : 3
+                    height: 2
+                    radius: 1
+                    color: isCurrent ? Theme.accentInk : Theme.subtext
+
+                    Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutCubic } }
+                }
+            }
+        }
 
         // ====================================================================
         // MOUSE / TOUCHPAD GESTURE & CLICK CONTROLLER

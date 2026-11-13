@@ -62,8 +62,16 @@ Singleton {
     // 5. Jaringan (Network)
     property string netDownText: "0.0 KB/s"
     property string netUpText: "0.0 KB/s"
-    property int netPercent: 12
-    property var netHistory: [12, 18, 15, 28, 42, 30, 22, 35, 48, 38, 25, 32]
+    property int netPercent: 0
+    property var netHistory: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    property var netDownHistory: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    property var netUpHistory: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    function scaleNetLog(bytesPerSec: double): int {
+        const kb = Math.max(0.0, bytesPerSec / 1024.0);
+        if (kb <= 0.1) return 0;
+        return Math.min(100, Math.max(4, Math.round(Math.log10(kb + 1) * 28)));
+    }
 
     // 6. Cooling Fan & ZRAM Swap
     property int fanRpm: 0
@@ -253,12 +261,13 @@ Singleton {
                     const txRate = Math.max(0, (netTx - root.prevNetTx) / dtSec);
                     root.netDownText = root.formatSpeed(rxRate);
                     root.netUpText = root.formatSpeed(txRate);
-                    const totalKb = (rxRate + txRate) / 1024.0;
-                    const waveVal = totalKb <= 0.2
-                        ? 10 + (root.tickCount % 3) * 3
-                        : Math.min(96, Math.max(14, Math.round(Math.log10(totalKb + 1) * 28)));
+                    const rxVal = root.scaleNetLog(rxRate);
+                    const txVal = root.scaleNetLog(txRate);
+                    const waveVal = root.scaleNetLog(rxRate + txRate);
                     root.netPercent = waveVal;
                     root.netHistory = [...root.netHistory.slice(1), waveVal];
+                    root.netDownHistory = [...root.netDownHistory.slice(1), rxVal];
+                    root.netUpHistory = [...root.netUpHistory.slice(1), txVal];
                 }
                 root.prevNetRx = netRx;
                 root.prevNetTx = netTx;

@@ -162,7 +162,7 @@ Scope {
         }
 
         const sumSameAsApp = rawSum.length === 0 || (sourceLabel.length > 0 && rawSum.toLowerCase() === sourceLabel.toLowerCase());
-        const headline = sumSameAsApp ? (rawBody.length > 0 ? rawBody : (sourceLabel || "Notification")) : rawSum;
+        const headline = sumSameAsApp ? (rawBody.length > 0 ? rawBody : (sourceLabel || "Notifikasi")) : rawSum;
         const cleanBody = (sumSameAsApp || rawBody.toLowerCase() === headline.toLowerCase()) ? "" : rawBody;
         const showSource = sourceLabel.length > 0 && sourceLabel.toLowerCase() !== headline.toLowerCase();
 
@@ -183,7 +183,7 @@ Scope {
         const art = resolveArtwork(rawNotif, rawApp, rawSum, critical);
         return {
             sourceLabel: showSource ? sourceLabel : "",
-            summaryText: headline || "Notification",
+            summaryText: headline || "Notifikasi",
             bodyText: formattedBody,
             bodyHasMarkup: hasMarkup,
             isCritical: critical,
@@ -556,7 +556,7 @@ Scope {
                 Behavior on border.color { ColorAnimation { duration: 130 } }
 
                 Accessible.role: Accessible.Pane
-                Accessible.name: `${sourceLabel ? sourceLabel + ": " : ""}${summaryText}${canRunPrimary ? " (click to open)" : ""}`
+                Accessible.name: `${sourceLabel ? sourceLabel + ": " : ""}${summaryText}${canRunPrimary ? " (klik untuk buka)" : ""}`
 
                 MouseArea {
                     id: cardClickArea
@@ -658,15 +658,8 @@ Scope {
                         // Line 1: Headline + Inline App Source + Queue Count
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.rightMargin: cardSurface.hovered ? 22 : 0
                             spacing: 4
-
-                            Rectangle {
-                                visible: cardSurface.isCritical
-                                width: 5
-                                height: 5
-                                radius: 2.5
-                                color: Theme.urgentInk
-                            }
 
                             Text {
                                 text: cardSurface.summaryText
@@ -740,8 +733,8 @@ Scope {
                                     readonly property string actionLabel: modelData?.text ?? ""
 
                                     implicitWidth: Math.min(150, actTxt.implicitWidth + 16)
-                                    implicitHeight: 21
-                                    radius: 10.5
+                                    implicitHeight: 24
+                                    radius: 12
                                     color: actMouse.containsMouse ? Theme.primary : Theme.surfaceContainerHigh
                                     scale: actMouse.pressed ? 0.96 : 1.0
 
@@ -791,9 +784,9 @@ Scope {
                     anchors.right: parent.right
                     anchors.topMargin: 6
                     anchors.rightMargin: 7
-                    width: 18
-                    height: 18
-                    radius: 9
+                    width: 20
+                    height: 20
+                    radius: 10
                     z: 2
                     opacity: cardSurface.hovered ? 1.0 : 0.0
                     visible: opacity > 0.01
@@ -804,7 +797,7 @@ Scope {
                     Behavior on color { ColorAnimation { duration: 110 } }
 
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Dismiss notification"
+                    Accessible.name: "Tutup notifikasi"
 
                     MatIcon {
                         anchors.centerIn: parent
@@ -862,7 +855,7 @@ Scope {
                     Behavior on scale { NumberAnimation { duration: 90 } }
 
                     Accessible.role: Accessible.Button
-                    Accessible.name: `Clear ${root.totalRemainingCount} notifications`
+                    Accessible.name: `Hapus ${root.totalRemainingCount} notifikasi`
 
                     Row {
                         id: clearRow
@@ -878,7 +871,7 @@ Scope {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: `Clear ${root.totalRemainingCount}`
+                            text: `Hapus ${root.totalRemainingCount}`
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Font.Medium

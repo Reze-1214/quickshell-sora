@@ -14,6 +14,8 @@ Pill {
     spacing: 6
     interactive: true
 
+    property int maxAvailableWidth: 400
+
     readonly property var activeClient: Hyprland.activeToplevel
     readonly property string rawTitle: activeClient?.title ?? ""
     readonly property string appClass: activeClient?.wayland?.appId ?? activeClient?.lastIpcObject?.class ?? activeClient?.lastIpcObject?.initialClass ?? ""
@@ -54,10 +56,7 @@ Pill {
     }
 
     onClicked: mouse => {
-        if (root.rawTitle.length === 0) {
-            // Mode pembunuh jendela interaktif (klik jendela mana pun yang bikin lag untuk mematikannya)
-            Quickshell.execDetached(["sh", "-c", "notify-send -u low 'Sora Killer' 'Klik jendela yang ingin dimatikan (ESC untuk batal)'; hyprctl kill"]);
-        } else if (mouse.button === Qt.MiddleButton) {
+        if (root.rawTitle.length > 0 && mouse.button === Qt.MiddleButton) {
             Hyprland.dispatch("hl.dsp.window.close()");
         }
     }
@@ -86,12 +85,19 @@ Pill {
         Layout.alignment: Qt.AlignVCenter
     }
 
+    readonly property bool showActionButtons: Config.workspaceHoverInfo.length === 0 && root.rawTitle.length > 0
+
     readonly property int maxTitleWidth: {
         const screenW = root.Window.window?.width ?? 1366;
-        if (screenW >= 2560) return Config.workspaceHoverInfo.length > 0 ? 300 : 250;
-        if (screenW >= 1920) return Config.workspaceHoverInfo.length > 0 ? 250 : 200;
-        if (screenW >= 1600) return Config.workspaceHoverInfo.length > 0 ? 210 : 170;
-        return Config.workspaceHoverInfo.length > 0 ? 190 : 145;
+        let baseMax = 145;
+        if (screenW >= 2560) baseMax = Config.workspaceHoverInfo.length > 0 ? 300 : 250;
+        else if (screenW >= 1920) baseMax = Config.workspaceHoverInfo.length > 0 ? 250 : 200;
+        else if (screenW >= 1600) baseMax = Config.workspaceHoverInfo.length > 0 ? 210 : 170;
+        else baseMax = Config.workspaceHoverInfo.length > 0 ? 190 : 145;
+
+        const buttonReserve = root.showActionButtons ? (22 + 4 + 22 + root.spacing) : 0;
+        const barCap = root.maxAvailableWidth - (root.paddingH * 2) - 15 - root.spacing - buttonReserve;
+        return Math.max(48, Math.min(baseMax, barCap));
     }
 
     Text {
@@ -113,99 +119,101 @@ Pill {
 
     readonly property bool isFloating: root.activeClient?.lastIpcObject?.floating ?? false
 
-    // Tombol Toggle Floating / Tiling Cepat
-    Rectangle {
-        id: floatBtn
-        visible: Config.workspaceHoverInfo.length === 0 && root.rawTitle.length > 0
-        implicitWidth: 16
-        implicitHeight: 16
-        radius: 8
+    RowLayout {
+        visible: root.showActionButtons
+        spacing: 4
         Layout.alignment: Qt.AlignVCenter
-        color: root.isFloating
-            ? Theme.accent
-            : (floatMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent")
-        border.width: (!root.isFloating && floatMouse.containsMouse) ? 1 : 0
-        border.color: Theme.outlineStrong
-        border.pixelAligned: true
+
+        // Tombol Toggle Floating / Tiling Cepat
+        Rectangle {
+            id: floatBtn
+            implicitWidth: 22
+            implicitHeight: 22
+            radius: 11
+            Layout.alignment: Qt.AlignVCenter
+            color: root.isFloating
+                ? Theme.accent
+                : (floatMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent")
+            border.width: (!root.isFloating && floatMouse.containsMouse) ? 1 : 0
+            border.color: Theme.outlineStrong
+            border.pixelAligned: true
             Accessible.role: Accessible.Button
-        Accessible.name: root.isFloating ? "Ubah jendela ke mode tiling" : "Ubah jendela ke mode floating"
+            Accessible.name: root.isFloating ? "Ubah jendela ke mode tiling" : "Ubah jendela ke mode floating"
 
-        Behavior on color { ColorAnimation { duration: Theme.animFast } }
-
-        MatIcon {
-            anchors.centerIn: parent
-            icon: root.isFloating ? "grid_view" : "picture_in_picture_alt"
-            size: 11
-            fill: root.isFloating ? 1.0 : 0.0
-            color: root.isFloating ? Theme.accentOnFill : (floatMouse.containsMouse ? Theme.text : Theme.subtext)
             Behavior on color { ColorAnimation { duration: Theme.animFast } }
-        }
 
-        MouseArea {
-            id: floatMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: Qt.PointingHandCursor
-            onClicked: mouse => {
-                if (mouse.button === Qt.RightButton) {
-                    Hyprland.dispatch("hl.dsp.window.center()");
-                } else {
-                    Hyprland.dispatch("hl.dsp.window.float()");
+            MatIcon {
+                anchors.centerIn: parent
+                icon: root.isFloating ? "grid_view" : "picture_in_picture_alt"
+                size: 13
+                fill: root.isFloating ? 1.0 : 0.0
+                color: root.isFloating ? Theme.accentOnFill : (floatMouse.containsMouse ? Theme.text : Theme.subtext)
+                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+            }
+
+            MouseArea {
+                id: floatMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: mouse => {
+                    if (mouse.button === Qt.RightButton) {
+                        Hyprland.dispatch("hl.dsp.window.center()");
+                    } else {
+                        Hyprland.dispatch("hl.dsp.window.float()");
+                    }
                 }
             }
         }
-    }
 
-    // Tombol Kill Cepat di Kiri Atas untuk Mencegah Lag
-    Rectangle {
-        id: killBtn
-        visible: Config.workspaceHoverInfo.length === 0 && root.rawTitle.length > 0
-        implicitWidth: 16
-        implicitHeight: 16
-        radius: 8
-        Layout.alignment: Qt.AlignVCenter
-        color: killMouse.pressed
-            ? Theme.urgent
-            : (killMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent")
-        border.width: (killMouse.containsMouse && !killMouse.pressed) ? 1 : 0
-        border.color: Theme.urgentInk
-        border.pixelAligned: true
-            Accessible.role: Accessible.Button
-        Accessible.name: "Tutup jendela aktif"
-
-        Behavior on color { ColorAnimation { duration: Theme.animFast } }
-
-        MatIcon {
-            anchors.centerIn: parent
-            icon: "close"
-            size: 11
-            fill: 0.0
+        // Tombol Tutup Jendela (Shift+Klik kanan untuk force kill -9)
+        Rectangle {
+            id: killBtn
+            implicitWidth: 22
+            implicitHeight: 22
+            radius: 11
+            Layout.alignment: Qt.AlignVCenter
             color: killMouse.pressed
-                ? (Theme.isDarkMode ? "#171A1C" : "#F8FAFA")
-                : (killMouse.containsMouse ? Theme.urgentInk : Theme.subtext)
-            Behavior on color { ColorAnimation { duration: Theme.animFast } }
-        }
+                ? Theme.urgent
+                : (killMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent")
+            border.width: (killMouse.containsMouse && !killMouse.pressed) ? 1 : 0
+            border.color: Theme.urgentInk
+            border.pixelAligned: true
+            Accessible.role: Accessible.Button
+            Accessible.name: "Tutup jendela aktif"
 
-        MouseArea {
-            id: killMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: Qt.PointingHandCursor
-            onClicked: mouse => {
-                const pid = root.activeClient?.lastIpcObject?.pid;
-                const app = root.appClass || "aplikasi";
-                if (mouse.button === Qt.RightButton) {
-                    // Hard force-kill (-9) langsung memutus proses yang macet total / bikin lag
-                    if (pid) {
-                        Quickshell.execDetached(["sh", "-c", `kill -9 ${pid} && notify-send -u critical "Sora Force Kill" "Paksa mematikan ${app} (PID: ${pid}) untuk mengatasi lag."`]);
-                    } else {
+            Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+            MatIcon {
+                anchors.centerIn: parent
+                icon: "close"
+                size: 13
+                fill: 0.0
+                color: killMouse.pressed
+                    ? (Theme.isDarkMode ? "#171A1C" : "#F8FAFA")
+                    : (killMouse.containsMouse ? Theme.urgentInk : Theme.subtext)
+                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+            }
+
+            MouseArea {
+                id: killMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: mouse => {
+                    const pid = root.activeClient?.lastIpcObject?.pid;
+                    const app = root.appClass || "aplikasi";
+                    if (mouse.button === Qt.RightButton && (mouse.modifiers & Qt.ShiftModifier)) {
+                        if (pid) {
+                            Quickshell.execDetached(["sh", "-c", `kill -9 ${pid} && notify-send -u critical "Sora Force Kill" "Paksa mematikan ${app} (PID: ${pid})."`]);
+                        } else {
+                            Hyprland.dispatch("hl.dsp.window.close()");
+                        }
+                    } else if (mouse.button === Qt.LeftButton) {
                         Hyprland.dispatch("hl.dsp.window.close()");
                     }
-                } else {
-                    // Graceful close
-                    Hyprland.dispatch("hl.dsp.window.close()");
                 }
             }
         }

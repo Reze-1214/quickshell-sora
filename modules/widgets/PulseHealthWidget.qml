@@ -52,7 +52,7 @@ Item {
                             Text {
                                 text: "ROOT /"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.weight: Font.Bold
                                 color: tray.colMuted
                             }
@@ -61,7 +61,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: `${SysMonitor.ssdUsedGb}/${SysMonitor.ssdTotalGb}G`
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.features: Theme.tabularFeatures
                                 color: tray.colMuted
                                 elide: Text.ElideRight
@@ -125,7 +125,7 @@ Item {
                             Text {
                                 text: "iGPU"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.weight: Font.Bold
                                 color: tray.colAccentTextMuted
                             }
@@ -151,7 +151,7 @@ Item {
                                     horizontalAlignment: Text.AlignRight
                                     text: `${SysMonitor.gpuFreqMhz}M`
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 8
+                                    font.pixelSize: 9
                                     font.features: Theme.tabularFeatures
                                     color: tray.colAccentTextMuted
                                     elide: Text.ElideRight
@@ -178,7 +178,7 @@ Item {
                             Text {
                                 text: "SISA"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.weight: Font.Bold
                                 color: tray.colMuted
                             }

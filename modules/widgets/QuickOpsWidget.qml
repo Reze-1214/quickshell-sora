@@ -49,9 +49,9 @@ Item {
 
                         Rectangle {
                             id: muteBtn
-                            Layout.preferredWidth: 20
-                            Layout.preferredHeight: 20
-                            radius: 6
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            radius: 7
                             activeFocusOnTab: AudioService.ready || activeFocus
                             Accessible.role: Accessible.Button
                             Accessible.name: root.isMuted ? "Bunyikan Output" : "Bisukan Output"
@@ -65,7 +65,7 @@ Item {
                             MatIcon {
                                 anchors.centerIn: parent
                                 icon: root.isMuted ? "volume_off" : (root.currentVol >= 0.5 ? "volume_up" : "volume_down")
-                                size: 12
+                                size: 13
                                 fill: root.isMuted ? 1.0 : 0.0
                                 color: root.isMuted ? tray.colUrgentText : tray.colInk
                             }
@@ -99,13 +99,13 @@ Item {
                         }
 
                         Text {
-                            Layout.preferredWidth: 26
+                            Layout.preferredWidth: 28
                             horizontalAlignment: Text.AlignRight
                             text: !AudioService.ready
                                 ? "--"
                                 : (root.isMuted ? "MUTE" : `${Math.round(AudioService.volume * 100)}%`)
                             font.family: Theme.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                             font.weight: Font.Bold
                             font.features: Theme.tabularFeatures
                             color: root.isMuted ? tray.colUrgentInk : (AudioService.ready ? tray.colInk : tray.colMuted)
@@ -119,13 +119,13 @@ Item {
                         spacing: 3
 
                         Item {
-                            Layout.preferredWidth: 20
-                            Layout.preferredHeight: 20
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
 
                             MatIcon {
                                 anchors.centerIn: parent
                                 icon: "brightness_medium"
-                                size: 12
+                                size: 13
                                 color: tray.colInk
                             }
                         }
@@ -140,11 +140,11 @@ Item {
                         }
 
                         Text {
-                            Layout.preferredWidth: 26
+                            Layout.preferredWidth: 28
                             horizontalAlignment: Text.AlignRight
                             text: `${Math.round(root.currentBright * 100)}%`
                             font.family: Theme.fontFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
                             font.weight: Font.Bold
                             font.features: Theme.tabularFeatures
                             color: tray.colInk
@@ -179,7 +179,7 @@ Item {
                     label: Network.wifiEnabled ? (Network.isConnected ? "Wi-Fi" : "No Net") : "Off"
                     tone: Network.wifiEnabled ? "accent" : "neutral"
                     active: Network.wifiEnabled
-                    accessName: "Toggle Wi-Fi"
+                    accessName: "Alihkan Wi-Fi"
                     onTriggered: Network.toggleWifi()
                     onSecondaryTriggered: {
                         Config.closeAllOverlays();
@@ -214,7 +214,7 @@ Item {
                     label: "Night"
                     tone: Config.nightLightEnabled ? "accent" : "neutral"
                     active: Config.nightLightEnabled
-                    accessName: "Toggle Night Light"
+                    accessName: "Alihkan Mode Malam"
                     onTriggered: Config.toggleNightLight()
                 }
             }
@@ -386,7 +386,7 @@ Item {
                 Text {
                     text: padRoot.label
                     font.family: Theme.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     font.weight: padRoot.active ? Font.Bold : Font.Medium
                     color: padRoot.active ? padRoot.activeFg : tray.colMuted
                 }

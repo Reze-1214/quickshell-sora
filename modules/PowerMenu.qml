@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "../config"
 import "../components"
 
@@ -22,22 +23,62 @@ PanelWindow {
     }
 
     property real openProgress: Config.powerMenuOpen ? 1.0 : 0.0
+    property int selectedIndex: -1
+    property bool keyboardNav: false
+    property string pendingActionLabel: ""
+    property string clockText: Qt.formatDateTime(new Date(), "HH:mm")
+
+    readonly property bool showChar: powerStage.width >= 600
+    readonly property string currentUser: Quickshell.env("USER") || "user"
+
+    readonly property var powerActions: [
+        { label: "Lock", icon: "lock", danger: false, confirm: false, cmd: ["hyprlock"] },
+        { label: "Suspend", icon: "bedtime", danger: false, confirm: false, cmd: ["systemctl", "suspend"] },
+        { label: "Logout", icon: "logout", danger: false, confirm: true, luaDispatch: "hl.dsp.exit()" },
+        { label: "Restart", icon: "restart_alt", danger: false, confirm: true, cmd: ["systemctl", "reboot"] },
+        { label: "Shutdown", icon: "power_settings_new", danger: true, confirm: true, cmd: ["systemctl", "poweroff"] }
+    ]
+
     Behavior on openProgress {
-        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
     }
 
     color: "transparent"
     visible: openProgress > 0.005
 
-    function triggerAction(cmd) {
-        Config.powerMenuOpen = false;
-        Quickshell.execDetached(cmd);
+    onVisibleChanged: {
+        if (visible) {
+            clockText = Qt.formatDateTime(new Date(), "HH:mm");
+        } else {
+            selectedIndex = -1;
+            keyboardNav = false;
+            pendingActionLabel = "";
+        }
     }
 
-    // Subtle Backdrop
+    Timer {
+        interval: 15000
+        running: root.visible
+        repeat: true
+        onTriggered: root.clockText = Qt.formatDateTime(new Date(), "HH:mm")
+    }
+
+    function activateAction(action) {
+        if (!action) return;
+        if (action.confirm && pendingActionLabel !== action.label) {
+            pendingActionLabel = action.label;
+            return;
+        }
+        pendingActionLabel = "";
+        Config.powerMenuOpen = false;
+        if (action.luaDispatch) Hyprland.dispatch(action.luaDispatch);
+        else Quickshell.execDetached(action.cmd);
+    }
+
+    // Dim backdrop
     Rectangle {
         anchors.fill: parent
-        color: Qt.alpha(Theme.background, 0.68 * root.openProgress)
+        color: Qt.alpha(Theme.background, 0.64 * root.openProgress)
 
         MouseArea {
             anchors.fill: parent
@@ -46,137 +87,230 @@ PanelWindow {
         }
     }
 
-    RectangularShadow {
-        anchors.fill: powerCard
-        radius: powerCard.radius
-        blur: 22
-        spread: 0.0
-        offset.y: 6
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.45 : 0.12)
-        opacity: root.openProgress
-        z: powerCard.z - 1
-    }
-
-    Rectangle {
-        id: powerCard
+    Item {
+        id: powerStage
         anchors.centerIn: parent
-        implicitWidth: 500
-        implicitHeight: 190
-        radius: 14
-        color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.97)
-        border.width: 1
-        border.color: Theme.outlineStrong
+        width: Math.min(690, Math.max(320, root.width - 36))
+        height: root.showChar ? Math.max(capsuleCard.height, charCutout.height) : capsuleCard.height
         opacity: root.openProgress
-        scale: 0.95 + (0.05 * root.openProgress)
+        scale: 0.94 + (0.06 * root.openProgress)
 
-        MouseArea {
-            anchors.fill: parent
+        RectangularShadow {
+            anchors.fill: capsuleCard
+            radius: capsuleCard.radius
+            blur: 26
+            spread: 0.0
+            offset.y: 10
+            color: Qt.alpha("#000000", Theme.isDarkMode ? 0.46 : 0.14)
         }
 
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 18
-            spacing: 14
+        // Main Caelestia-style Expressive Capsule
+        Rectangle {
+            id: capsuleCard
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 178
+            radius: 24
+            color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.95 : 0.98)
+            border.width: 0
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Rectangle {
-                    width: 3
-                    height: 12
-                    radius: 1.5
-                    color: Theme.accentInk
-                }
-
-                Text {
-                    text: "KINFAEL · Power"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    color: Theme.text
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Text {
-                    text: "Esc untuk batal"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
-                    color: Theme.subtext
-                }
+            MouseArea {
+                anchors.fill: parent
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.topMargin: 18
+                anchors.bottomMargin: 18
+                anchors.rightMargin: 22
+                anchors.leftMargin: root.showChar ? 250 : 20
+                spacing: 14
 
-                Repeater {
-                    model: [
-                        { label: "Lock", icon: "lock", danger: false, cmd: ["hyprlock"] },
-                        { label: "Suspend", icon: "bedtime", danger: false, cmd: ["systemctl", "suspend"] },
-                        { label: "Logout", icon: "logout", danger: false, cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
-                        { label: "Restart", icon: "restart_alt", danger: false, cmd: ["systemctl", "reboot"] },
-                        { label: "Shutdown", icon: "power_settings_new", danger: true, cmd: ["systemctl", "poweroff"] }
-                    ]
+                // Clean top header row
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    Text {
+                        text: root.clockText
+                        font.family: Theme.fontFamily
+                        font.features: Theme.tabularFeatures
+                        font.pixelSize: 20
+                        font.weight: Font.Bold
+                        color: Theme.text
+                    }
+
+                    Text {
+                        text: root.currentUser
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        color: Theme.subtext
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
 
                     Rectangle {
-                        id: actionPill
-                        required property var modelData
-                        readonly property bool hovered: pillMouse.containsMouse
+                        implicitWidth: hintText.implicitWidth + 18
+                        implicitHeight: 24
+                        radius: 12
+                        color: root.pendingActionLabel !== "" ? Theme.urgent : Theme.surfaceContainer
 
-                        Layout.fillWidth: true
-                        implicitHeight: 102
-                        radius: 10
-                        color: hovered
-                            ? (modelData.danger ? Theme.urgentInk : Theme.accent)
-                            : Theme.surface
-                        scale: pillMouse.pressed ? 0.95 : 1.0
-
-                        Behavior on color { ColorAnimation { duration: 130; easing.type: Easing.OutCubic } }
-                        Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
-
-                        ColumnLayout {
+                        Text {
+                            id: hintText
                             anchors.centerIn: parent
-                            spacing: 8
-
-                            MatIcon {
-                                Layout.alignment: Qt.AlignHCenter
-                                icon: actionPill.modelData.icon
-                                size: 22
-                                fill: actionPill.hovered ? 1.0 : 0.0
-                                color: actionPill.hovered
-                                    ? (actionPill.modelData.danger ? (Theme.isDarkMode ? "#171A1C" : "#F8FAFA") : Theme.accentOnFill)
-                                    : (actionPill.modelData.danger ? Theme.urgentInk : Theme.accentInk)
-                            }
-
-                            Text {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: actionPill.modelData.label
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                                font.weight: Font.Medium
-                                color: actionPill.hovered
-                                    ? (actionPill.modelData.danger ? (Theme.isDarkMode ? "#171A1C" : "#F8FAFA") : Theme.accentOnFill)
-                                    : Theme.text
-                            }
+                            text: root.pendingActionLabel !== ""
+                                ? ("Klik / Enter lagi: " + root.pendingActionLabel)
+                                : "Esc batal"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            color: root.pendingActionLabel !== ""
+                                ? (Theme.isDarkMode ? "#171A1C" : "#F8FAFA")
+                                : Theme.subtext
                         }
+                    }
+                }
 
-                        MouseArea {
-                            id: pillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.triggerAction(actionPill.modelData.cmd)
+                // 5 Caelestia Morphing Circle -> Squircle Session Buttons
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    Repeater {
+                        model: root.powerActions
+
+                        Item {
+                            id: btnItem
+                            required property int index
+                            required property var modelData
+                            readonly property bool isPending: root.pendingActionLabel === modelData.label
+                            readonly property bool kbFocused: root.keyboardNav && root.selectedIndex === index
+                            readonly property bool hovered: btnMouse.containsMouse || kbFocused || isPending
+                            readonly property bool useDangerFill: modelData.danger || isPending
+                            readonly property color onDangerInk: Theme.isDarkMode ? "#171A1C" : "#F8FAFA"
+
+                            Layout.fillWidth: true
+                            implicitHeight: 98
+
+                            Accessible.role: Accessible.Button
+                            Accessible.name: isPending ? ("Konfirmasi " + modelData.label) : modelData.label
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 8
+
+                                // Signature Caelestia circle -> rounded squircle morph
+                                Rectangle {
+                                    id: iconCircle
+                                    Layout.alignment: Qt.AlignHCenter
+                                    width: 62
+                                    height: 62
+                                    radius: btnItem.hovered ? 18 : 31
+                                    color: btnItem.hovered
+                                        ? (btnItem.useDangerFill ? Theme.urgent : Theme.accent)
+                                        : Theme.surfaceContainer
+                                    border.width: (btnItem.kbFocused && !btnMouse.containsMouse && !btnItem.isPending) ? 1.5 : 0
+                                    border.color: Theme.accentInk
+                                    scale: btnMouse.pressed ? 0.92 : (btnItem.hovered ? 1.05 : 1.0)
+
+                                    Behavior on radius { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+                                    Behavior on color { ColorAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+
+                                    MatIcon {
+                                        anchors.centerIn: parent
+                                        icon: btnItem.isPending ? "priority_high" : btnItem.modelData.icon
+                                        size: 24
+                                        fill: btnItem.hovered ? 1.0 : 0.0
+                                        color: btnItem.hovered
+                                            ? (btnItem.useDangerFill ? btnItem.onDangerInk : Theme.accentOnFill)
+                                            : Theme.text
+                                    }
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: btnItem.isPending ? "Konfirmasi?" : btnItem.modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                    font.weight: btnItem.hovered ? Font.DemiBold : Font.Medium
+                                    color: btnItem.isPending
+                                        ? Theme.urgentInk
+                                        : (btnItem.hovered ? Theme.text : Theme.subtext)
+                                }
+                            }
+
+                            MouseArea {
+                                id: btnMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onEntered: {
+                                    root.keyboardNav = false;
+                                    root.selectedIndex = btnItem.index;
+                                }
+                                onClicked: root.activateAction(btnItem.modelData)
+                            }
                         }
                     }
                 }
             }
         }
+
+        // Transparent Anime Cutout PNG (Yui Hirasawa "Hold on!" pose)
+        Image {
+            id: charCutout
+            visible: root.showChar
+            anchors.left: parent.left
+            anchors.bottom: capsuleCard.bottom
+            anchors.leftMargin: 10
+            height: 218
+            width: Math.round(height * (1024 / 964))
+            source: Qt.resolvedUrl("../assets/yui_power.png")
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            cache: true
+            smooth: true
+            z: 3
+        }
     }
 
     Item {
-        focus: true
-        Keys.onEscapePressed: Config.powerMenuOpen = false
+        focus: Config.powerMenuOpen
+        Keys.onEscapePressed: {
+            if (root.pendingActionLabel !== "") root.pendingActionLabel = "";
+            else Config.powerMenuOpen = false;
+        }
+        Keys.onLeftPressed: {
+            root.pendingActionLabel = "";
+            root.keyboardNav = true;
+            root.selectedIndex = root.selectedIndex <= 0 ? root.powerActions.length - 1 : root.selectedIndex - 1;
+        }
+        Keys.onRightPressed: {
+            root.pendingActionLabel = "";
+            root.keyboardNav = true;
+            root.selectedIndex = (root.selectedIndex + 1) % root.powerActions.length;
+        }
+        Keys.onTabPressed: event => {
+            root.pendingActionLabel = "";
+            root.keyboardNav = true;
+            if (event.modifiers & Qt.ShiftModifier) {
+                root.selectedIndex = root.selectedIndex <= 0 ? root.powerActions.length - 1 : root.selectedIndex - 1;
+            } else {
+                root.selectedIndex = (root.selectedIndex + 1) % root.powerActions.length;
+            }
+            event.accepted = true;
+        }
+        Keys.onReturnPressed: {
+            if (root.selectedIndex >= 0) root.activateAction(root.powerActions[root.selectedIndex]);
+        }
+        Keys.onEnterPressed: {
+            if (root.selectedIndex >= 0) root.activateAction(root.powerActions[root.selectedIndex]);
+        }
+        Keys.onSpacePressed: {
+            if (root.selectedIndex >= 0) root.activateAction(root.powerActions[root.selectedIndex]);
+        }
     }
 }

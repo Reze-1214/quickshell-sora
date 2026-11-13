@@ -38,10 +38,12 @@ PanelWindow {
         const _v = Config.widgetLayoutVersion;
         const pos = Config.widgetPositions ?? {};
         if (Object.keys(pos).length === 0) return "right";
+        const rightX = Math.max(14, Math.round(Config.desktopWidth - 294));
+        const isRight = xVal => Math.abs(xVal - rightX) <= 8 || xVal === 1072 || xVal === 1012;
         if (pos.sunPhase && pos.mediaWave) {
             if (pos.sunPhase.x === 14 && pos.mediaWave.x === 14) return "left";
-            if (pos.sunPhase.x === 14 && (pos.mediaWave.x === 1072 || pos.mediaWave.x === 1012)) return "split";
-            if ((pos.sunPhase.x === 1072 || pos.sunPhase.x === 1012) && (pos.mediaWave.x === 1072 || pos.mediaWave.x === 1012)) return "right";
+            if (pos.sunPhase.x === 14 && isRight(pos.mediaWave.x)) return "split";
+            if (isRight(pos.sunPhase.x) && isRight(pos.mediaWave.x)) return "right";
         }
         return "";
     }
@@ -356,6 +358,64 @@ PanelWindow {
                             Config.showDesktopWidgets = true;
                             Config.resetWidgetPositions();
                         }
+                    }
+
+                    Rectangle {
+                        id: editModeBtn
+                        implicitWidth: editModeRow.implicitWidth + 12
+                        height: 28
+                        radius: 6
+                        activeFocusOnTab: Config.widgetManagerOpen
+                        color: Config.widgetEditMode
+                            ? Theme.accent
+                            : (editModeArea.containsMouse ? Theme.surfaceContainer : "transparent")
+                        border.width: activeFocus ? 1 : 0
+                        border.color: Theme.accentInk
+
+                        Accessible.role: Accessible.CheckBox
+                        Accessible.name: Config.widgetEditMode ? "Kunci posisi widget" : "Atur posisi widget"
+                        Accessible.checked: Config.widgetEditMode
+
+                        function activate(): void {
+                            Config.showDesktopWidgets = true;
+                            Config.toggleWidgetEditMode();
+                            if (Config.widgetEditMode) Config.widgetManagerOpen = false;
+                        }
+
+                        RowLayout {
+                            id: editModeRow
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            MatIcon {
+                                icon: Config.widgetEditMode ? "lock_open" : "open_with"
+                                size: 15
+                                color: Config.widgetEditMode
+                                    ? Theme.accentOnFill
+                                    : (editModeArea.containsMouse ? Theme.text : Theme.subtext)
+                            }
+
+                            Text {
+                                text: Config.widgetEditMode ? "Kunci" : "Atur posisi"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                font.weight: Config.widgetEditMode ? Font.Bold : Font.Medium
+                                color: Config.widgetEditMode
+                                    ? Theme.accentOnFill
+                                    : (editModeArea.containsMouse ? Theme.text : Theme.subtext)
+                            }
+                        }
+
+                        MouseArea {
+                            id: editModeArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: editModeBtn.activate()
+                        }
+
+                        Keys.onReturnPressed: editModeBtn.activate()
+                        Keys.onSpacePressed: editModeBtn.activate()
                     }
 
                     Item { Layout.fillWidth: true }

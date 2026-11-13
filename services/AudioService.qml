@@ -9,6 +9,47 @@ Singleton {
     readonly property PwNode sink: Pipewire.defaultAudioSink
     readonly property PwNode source: Pipewire.defaultAudioSource
 
+    readonly property var sinks: {
+        const all = Pipewire.nodes?.values ?? [];
+        const out = [];
+        for (let i = 0; i < all.length; i++) {
+            const n = all[i];
+            if (n && !n.isStream && n.isSink && n.audio !== null) {
+                out.push(n);
+            }
+        }
+        return out;
+    }
+
+    readonly property var sources: {
+        const all = Pipewire.nodes?.values ?? [];
+        const out = [];
+        for (let i = 0; i < all.length; i++) {
+            const n = all[i];
+            if (n && !n.isStream && !n.isSink && n.audio !== null && !String(n.name ?? "").endsWith(".monitor")) {
+                out.push(n);
+            }
+        }
+        return out;
+    }
+
+    function nodeLabel(node: var): string {
+        if (!node) return "Audio Device";
+        const nick = (node.nickname ?? "").trim();
+        if (nick.length > 0) return nick;
+        const desc = (node.description ?? "").trim();
+        if (desc.length > 0) return desc;
+        return node.name ?? "Audio Device";
+    }
+
+    function setDefaultSink(node: var): void {
+        if (node) Pipewire.preferredDefaultAudioSink = node;
+    }
+
+    function setDefaultSource(node: var): void {
+        if (node) Pipewire.preferredDefaultAudioSource = node;
+    }
+
     readonly property bool ready: !!sink?.ready && !!sink?.audio
     readonly property bool muted: !!sink?.audio?.muted
     readonly property real volume: {
@@ -59,8 +100,13 @@ Singleton {
         }
     }
 
-    // Critical: Bind default sink and source to PipeWire registry
+    // Critical: Bind default sink, source, and device list to PipeWire registry
     PwObjectTracker {
-        objects: [root.sink, root.source].filter(n => n !== null && n !== undefined)
+        objects: {
+            const list = [root.sink, root.source];
+            for (let i = 0; i < root.sinks.length; i++) list.push(root.sinks[i]);
+            for (let i = 0; i < root.sources.length; i++) list.push(root.sources[i]);
+            return list.filter(n => n !== null && n !== undefined);
+        }
     }
 }

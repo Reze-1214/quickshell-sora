@@ -62,7 +62,7 @@ Item {
                             Text {
                                 text: SysMonitor.cpuCores
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                                 font.features: Theme.tabularFeatures
                                 color: tray.colMuted
                             }
@@ -93,7 +93,7 @@ Item {
                                 Text {
                                     text: "RAM"
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 10
                                     font.weight: Font.DemiBold
                                     color: tray.colMuted
                                 }
@@ -102,7 +102,7 @@ Item {
                                     Layout.fillWidth: true
                                     text: `${SysMonitor.ramUsedGb}/${SysMonitor.ramTotalGb}G`
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 10
                                     font.features: Theme.tabularFeatures
                                     color: tray.colMuted
                                     elide: Text.ElideRight
@@ -147,7 +147,7 @@ Item {
                             Text {
                                 text: "ZRAM"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                                 font.weight: Font.DemiBold
                                 color: tray.colMuted
                             }
@@ -156,7 +156,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: `${SysMonitor.zramUsedGb}/${SysMonitor.zramTotalGb}G`
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                                 font.features: Theme.tabularFeatures
                                 color: tray.colMuted
                                 elide: Text.ElideRight
@@ -205,7 +205,7 @@ Item {
                             Text {
                                 text: "CPU"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                                 font.weight: Font.Bold
                                 color: tray.colAccentTextMuted
                             }

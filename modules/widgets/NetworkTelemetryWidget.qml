@@ -62,7 +62,7 @@ Item {
                             Text {
                                 text: Network.isConnected ? "UNDUH" : "OFFLINE"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.weight: Font.Bold
                                 color: netHead.fgMuted
                             }
@@ -89,7 +89,7 @@ Item {
                                 Layout.alignment: Qt.AlignRight
                                 text: "UNGGAH"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.weight: Font.Medium
                                 color: netHead.fgMuted
                             }
@@ -98,7 +98,7 @@ Item {
                                 Layout.alignment: Qt.AlignRight
                                 text: `↑ ${SysMonitor.netUpText}`
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                                 font.weight: Font.DemiBold
                                 font.features: Theme.tabularFeatures
                                 color: netHead.fg
@@ -130,6 +130,32 @@ Item {
                         onAccentChanged: requestPaint()
                         onSubColChanged: requestPaint()
 
+                        function drawSpline(ctx, series, strokeStyle: string, strokeWidth: real, w: real, h: real): void {
+                            if (!series || series.length < 2) return;
+                            const n = series.length;
+                            const coords = [];
+                            for (let i = 0; i < n; i++) {
+                                const px = (i / (n - 1)) * w;
+                                const val = Math.max(0, Math.min(100, series[i] || 0)) / 100.0;
+                                const py = h - val * (h - 6) - 3;
+                                coords.push({ x: px, y: py });
+                            }
+                            const last = coords[n - 1];
+                            ctx.beginPath();
+                            ctx.moveTo(coords[0].x, coords[0].y);
+                            for (let j = 0; j < n - 1; j++) {
+                                ctx.quadraticCurveTo(
+                                    coords[j].x, coords[j].y,
+                                    (coords[j].x + coords[j + 1].x) / 2,
+                                    (coords[j].y + coords[j + 1].y) / 2
+                                );
+                            }
+                            ctx.lineTo(last.x, last.y);
+                            ctx.strokeStyle = strokeStyle;
+                            ctx.lineWidth = strokeWidth;
+                            ctx.stroke();
+                        }
+
                         onPaint: {
                             const ctx = getContext("2d");
                             ctx.reset();
@@ -145,45 +171,9 @@ Item {
                             ctx.lineWidth = 1;
                             ctx.stroke();
 
-                            const raw = SysMonitor.netHistory || [12, 18, 15, 28, 42, 30, 22, 35, 48, 38, 25, 32];
-                            const n = raw.length;
-                            if (n < 2) return;
-
-                            const coords = [];
-                            for (let i = 0; i < n; i++) {
-                                const px = (i / (n - 1)) * w;
-                                const val = Math.max(10, Math.min(92, raw[i])) / 100.0;
-                                const py = h - val * (h - 6) - 3;
-                                coords.push({ x: px, y: py });
-                            }
-
-                            const last = coords[coords.length - 1];
-
-                            // Upload secondary line
-                            ctx.beginPath();
-                            for (let k = 0; k < coords.length; k++) {
-                                const upY = h - (h - coords[k].y) * 0.42 - 2;
-                                if (k === 0) ctx.moveTo(coords[0].x, upY);
-                                else {
-                                    const prevUpY = h - (h - coords[k - 1].y) * 0.42 - 2;
-                                    ctx.quadraticCurveTo(coords[k - 1].x, prevUpY, (coords[k - 1].x + coords[k].x) / 2, (prevUpY + upY) / 2);
-                                }
-                            }
-                            ctx.lineTo(last.x, h - (h - last.y) * 0.42 - 2);
-                            ctx.strokeStyle = Qt.alpha(subCol, 0.58).toString();
-                            ctx.lineWidth = 1.2;
-                            ctx.stroke();
-
-                            // Download primary spline
-                            ctx.beginPath();
-                            ctx.moveTo(coords[0].x, coords[0].y);
-                            for (let j = 0; j < coords.length - 1; j++) {
-                                ctx.quadraticCurveTo(coords[j].x, coords[j].y, (coords[j].x + coords[j + 1].x) / 2, (coords[j].y + coords[j + 1].y) / 2);
-                            }
-                            ctx.lineTo(last.x, last.y);
-                            ctx.strokeStyle = accent.toString();
-                            ctx.lineWidth = 2.0;
-                            ctx.stroke();
+                            // Upload & Download real telemetry splines
+                            drawSpline(ctx, SysMonitor.netUpHistory, Qt.alpha(subCol, 0.72).toString(), 1.3, w, h);
+                            drawSpline(ctx, SysMonitor.netDownHistory, accent.toString(), 2.0, w, h);
                         }
                     }
                 }

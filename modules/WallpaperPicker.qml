@@ -76,6 +76,7 @@ PanelWindow {
     readonly property string selectedPath: (selectedIndex >= 0 && selectedIndex < totalCount)
         ? ThemeEngine.wallpapers[selectedIndex]
         : ""
+    readonly property string selectedFilename: selectedPath.length > 0 ? selectedPath.split("/").pop() : ""
     readonly property bool selectedIsActive: selectedPath.length > 0 && selectedPath === Config.wallpaperPath
 
     function sliceWidthForDist(absD: real): real {
@@ -268,14 +269,14 @@ PanelWindow {
             onClicked: Config.wallpaperPickerOpen = false
         }
 
-        // Top-Left Minimal Index Counter Pill
+        // Top-Left Minimal Index & Filename Pill
         Rectangle {
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.topMargin: 20
             anchors.leftMargin: 24
             height: 32
-            implicitWidth: counterText.implicitWidth + 24
+            implicitWidth: Math.min(320, counterText.implicitWidth + 24)
             radius: 10
             color: root.colChassis
             border.width: 1
@@ -285,13 +286,19 @@ PanelWindow {
 
             Text {
                 id: counterText
-                anchors.centerIn: parent
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
                 text: `${String(root.selectedIndex + 1).padStart(2, "0")} / ${String(root.totalCount).padStart(2, "0")}`
+                    + (root.selectedFilename.length > 0 ? ` · ${root.selectedFilename}` : "")
                 font.family: Theme.fontMono
                 font.pixelSize: 11
                 font.weight: Font.DemiBold
                 font.features: Theme.tabularFeatures
                 color: root.colMuted
+                elide: Text.ElideMiddle
             }
         }
 
@@ -305,12 +312,28 @@ PanelWindow {
             height: 32
             implicitWidth: importLayout.implicitWidth + 24
             radius: 10
+            activeFocusOnTab: Config.wallpaperPickerOpen
+            Accessible.role: Accessible.Button
+            Accessible.name: "Import Gambar Wallpaper"
             color: importMouse.pressed
                 ? Qt.darker(root.colChassis, 1.2)
                 : (importMouse.containsMouse ? Theme.surfaceContainerHigh : root.colChassis)
             border.width: 1
-            border.color: importMouse.containsMouse ? root.colHairlineStrong : root.colHairline
+            border.color: topImportPill.activeFocus
+                ? root.colAccent
+                : (importMouse.containsMouse ? root.colHairlineStrong : root.colHairline)
             opacity: root.openProgress
+
+            Keys.onReturnPressed: event => {
+                Config.wallpaperPickerOpen = false;
+                ThemeEngine.openImportDialog();
+                event.accepted = true;
+            }
+            Keys.onSpacePressed: event => {
+                Config.wallpaperPickerOpen = false;
+                ThemeEngine.openImportDialog();
+                event.accepted = true;
+            }
 
             Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
@@ -526,7 +549,7 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     text: "AKTIF"
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 9
+                                    font.pixelSize: 10
                                     font.weight: Font.Bold
                                     font.letterSpacing: 0.5
                                     color: root.colAccentOnFill
