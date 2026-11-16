@@ -9,6 +9,7 @@
 # User personal state
 config/calendar_events.json
 config/calendar_marks.json
+config/launcher_recent.json
 config/accent.txt
 .wallpapers_old_backup/
 

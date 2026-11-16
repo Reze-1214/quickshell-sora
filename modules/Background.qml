@@ -100,7 +100,7 @@ PanelWindow {
         sourceSize.height: root.targetH
         asynchronous: true
         smooth: true
-        mipmap: true
+        mipmap: false
         cache: true
         opacity: status === Image.Ready ? 1.0 : 0.0
 
@@ -121,8 +121,8 @@ PanelWindow {
         sourceSize.height: root.targetH
         asynchronous: true
         smooth: true
-        mipmap: true
-        cache: true
+        mipmap: false
+        cache: false
         onStatusChanged: {
             if (status === Image.Error) {
                 root.transitioning = false;
@@ -145,8 +145,8 @@ PanelWindow {
         sourceSize.height: root.targetH
         asynchronous: true
         smooth: true
-        mipmap: true
-        cache: true
+        mipmap: false
+        cache: false
         onStatusChanged: {
             if (status === Image.Error) {
                 root.transitioning = false;
@@ -217,8 +217,10 @@ PanelWindow {
     }
 
     // Aesthetic Harmonized Desktop Widgets (Image 1 + 2 + 3 fusion)
-    DesktopWidgets {
-        id: desktopWidgets
+    Loader {
         z: 3
+        anchors.fill: parent
+        active: Config.showDesktopWidgets
+        sourceComponent: DesktopWidgets {}
     }
 }

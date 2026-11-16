@@ -372,8 +372,6 @@ Singleton {
     }
 
     Component.onCompleted: {
-        scanWallpapers();
-        scanBanners();
         refreshWallpaperPalette(Config.wallpaperPath);
     }
 

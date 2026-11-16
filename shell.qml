@@ -225,14 +225,29 @@ ShellRoot {
 
                     Connections {
                         target: Config
-                        function onDashboardOpenChanged() { if (Config.dashboardOpen) overlayScope.dashLoaded = true; }
-                        function onLauncherOpenChanged() { if (Config.launcherOpen) overlayScope.launcherLoaded = true; }
-                        function onPowerMenuOpenChanged() { if (Config.powerMenuOpen) overlayScope.powerMenuLoaded = true; }
-                        function onWidgetManagerOpenChanged() { if (Config.widgetManagerOpen) overlayScope.widgetMgrLoaded = true; }
-                        function onWallpaperPickerOpenChanged() { if (Config.wallpaperPickerOpen) overlayScope.wallPickerLoaded = true; }
-                        function onCenterPopoverOpenChanged() { if (Config.centerPopoverOpen) overlayScope.centerLoaded = true; }
-                        function onBatteryPopoverOpenChanged() { if (Config.batteryPopoverOpen) overlayScope.batteryLoaded = true; }
-                        function onTrayPopoverOpenChanged() { if (Config.trayPopoverOpen) overlayScope.trayLoaded = true; }
+                        function onDashboardOpenChanged() { if (Config.dashboardOpen) overlayScope.dashLoaded = true; else unloadTimer.restart(); }
+                        function onLauncherOpenChanged() { if (Config.launcherOpen) overlayScope.launcherLoaded = true; else unloadTimer.restart(); }
+                        function onPowerMenuOpenChanged() { if (Config.powerMenuOpen) overlayScope.powerMenuLoaded = true; else unloadTimer.restart(); }
+                        function onWidgetManagerOpenChanged() { if (Config.widgetManagerOpen) overlayScope.widgetMgrLoaded = true; else unloadTimer.restart(); }
+                        function onWallpaperPickerOpenChanged() { if (Config.wallpaperPickerOpen) overlayScope.wallPickerLoaded = true; else unloadTimer.restart(); }
+                        function onCenterPopoverOpenChanged() { if (Config.centerPopoverOpen) overlayScope.centerLoaded = true; else unloadTimer.restart(); }
+                        function onBatteryPopoverOpenChanged() { if (Config.batteryPopoverOpen) overlayScope.batteryLoaded = true; else unloadTimer.restart(); }
+                        function onTrayPopoverOpenChanged() { if (Config.trayPopoverOpen) overlayScope.trayLoaded = true; else unloadTimer.restart(); }
+                    }
+
+                    Timer {
+                        id: unloadTimer
+                        interval: 2000
+                        onTriggered: {
+                            if (!Config.dashboardOpen) overlayScope.dashLoaded = false;
+                            if (!Config.launcherOpen) overlayScope.launcherLoaded = false;
+                            if (!Config.powerMenuOpen) overlayScope.powerMenuLoaded = false;
+                            if (!Config.widgetManagerOpen) overlayScope.widgetMgrLoaded = false;
+                            if (!Config.wallpaperPickerOpen) overlayScope.wallPickerLoaded = false;
+                            if (!Config.centerPopoverOpen) overlayScope.centerLoaded = false;
+                            if (!Config.batteryPopoverOpen) overlayScope.batteryLoaded = false;
+                            if (!Config.trayPopoverOpen) overlayScope.trayLoaded = false;
+                        }
                     }
 
                     OSD {
