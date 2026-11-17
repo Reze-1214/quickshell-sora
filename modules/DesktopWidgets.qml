@@ -33,7 +33,7 @@ Item {
         widgetId: "sunPhase"
         defaultX: root.rightColX
         defaultY: 56
-        widgetName: "Agenda & Notifikasi"
+        widgetName: "Agenda & Notifications"
         visible: Config.showWidgetSunPhase
 
         SunPhaseWidget {}
@@ -57,7 +57,7 @@ Item {
         widgetId: "bauhausDial"
         defaultX: root.rightColX
         defaultY: 256
-        widgetName: "Telemetri CPU & RAM"
+        widgetName: "CPU & RAM Telemetry"
         visible: Config.showWidgetBauhausDial
 
         BauhausDialWidget {}
@@ -69,7 +69,7 @@ Item {
         widgetId: "netTelemetry"
         defaultX: root.rightColX
         defaultY: 370
-        widgetName: "Trafik Jaringan"
+        widgetName: "Network Traffic"
         visible: Config.showWidgetNetTelemetry
 
         NetworkTelemetryWidget {}
@@ -81,7 +81,7 @@ Item {
         widgetId: "pulseHealth"
         defaultX: root.rightColX + 144
         defaultY: 370
-        widgetName: "GPU & Penyimpanan"
+        widgetName: "GPU & Storage"
         visible: Config.showWidgetPulseHealth
 
         PulseHealthWidget {}
@@ -137,7 +137,7 @@ Item {
             }
 
             Text {
-                text: "Seret widget untuk mengatur posisi"
+                text: "Drag widgets to reposition"
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
                 font.weight: Font.Medium
@@ -151,12 +151,12 @@ Item {
                 color: doneMa.containsMouse ? Qt.lighter(Theme.accent, 1.08) : Theme.accent
                 activeFocusOnTab: Config.widgetEditMode
                 Accessible.role: Accessible.Button
-                Accessible.name: "Kunci Posisi Widget"
+                Accessible.name: "Lock Widget Positions"
 
                 Text {
                     id: doneTxt
                     anchors.centerIn: parent
-                    text: "Kunci"
+                    text: "Lock"
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.weight: Font.Bold

@@ -18,23 +18,23 @@ PanelWindow {
 
     anchors {
         top: true
+        bottom: true
+        left: true
         right: true
     }
 
     readonly property int popoverWidth: 224
     readonly property int maxMenuHeight: Math.max(200, Screen.height - Config.barMarginTop - Config.barHeight - 24)
 
-    margins {
-        top: Config.barMarginTop + Config.barHeight - 4
-        right: Math.max(8, Math.min(Screen.width - popoverWidth - 8, Config.trayPopoverRightMargin - 6))
-    }
-
-    implicitWidth: popoverWidth
-    implicitHeight: Math.min(maxMenuHeight, Math.max(60, cardCol.implicitHeight + 24))
-
     property real openProgress: Config.trayPopoverOpen ? 1.0 : 0.0
     Behavior on openProgress {
-        NumberAnimation { duration: 110; easing.type: Easing.OutQuad }
+        NumberAnimation {
+            duration: Config.trayPopoverOpen ? 320 : 140
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Config.trayPopoverOpen
+                ? [0.38, 1.21, 0.22, 1.0, 1.0, 1.0]
+                : [0.3, 0.0, 0.8, 0.15, 1.0, 1.0]
+        }
     }
 
     color: "transparent"
@@ -45,16 +45,20 @@ PanelWindow {
         if (!visible) hasEntered = false;
     }
 
-    HoverHandler {
-        id: menuHover
-        onHoveredChanged: {
-            if (hovered) {
-                root.hasEntered = true;
-                leaveTimer.stop();
-            } else if (root.hasEntered) {
-                leaveTimer.restart();
+    Connections {
+        target: Config
+        function onTrayPopoverOpenChanged() {
+            if (Config.trayPopoverOpen) {
+                menuCard.forceActiveFocus();
             }
         }
+    }
+
+    // Outside backdrop dismisses popover cleanly even if cursor never enters menuCard
+    MouseArea {
+        anchors.fill: parent
+        enabled: Config.trayPopoverOpen
+        onClicked: Config.trayPopoverOpen = false
     }
 
     Timer {
@@ -68,31 +72,56 @@ PanelWindow {
         menu: (Config.activeTrayItem && Config.activeTrayItem.menu) ? Config.activeTrayItem.menu : null
     }
 
-    RectangularShadow {
-        anchors.fill: menuCard
-        radius: menuCard.radius
-        blur: 12
-        spread: 0.0
-        offset.y: 4
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.38 : 0.10)
-        opacity: root.openProgress
-        z: menuCard.z - 1
-    }
+    Item {
+        id: menuWrap
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: Config.barMarginTop + Config.barHeight - 4
+        anchors.rightMargin: Math.max(8, Math.min(root.width - root.popoverWidth - 8, Config.trayPopoverRightMargin - 6))
+        width: root.popoverWidth
+        height: Math.min(root.maxMenuHeight, Math.max(60, cardCol.implicitHeight + 24))
 
-    Rectangle {
-        id: menuCard
-        anchors.fill: parent
-        anchors.margins: 6
-        radius: 18
-        color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.95 : 0.97)
-        border.width: 1
-        border.color: Theme.outline
-        clip: true
-        focus: Config.trayPopoverOpen
-        Keys.onEscapePressed: Config.trayPopoverOpen = false
+        HoverHandler {
+            id: menuHover
+            onHoveredChanged: {
+                if (hovered) {
+                    root.hasEntered = true;
+                    leaveTimer.stop();
+                } else if (root.hasEntered) {
+                    leaveTimer.restart();
+                }
+            }
+        }
 
-        opacity: root.openProgress
-        scale: 0.97 + (0.03 * root.openProgress)
+        RectangularShadow {
+            visible: !Theme.isDarkMode
+            anchors.fill: menuCard
+            radius: menuCard.radius
+            blur: 14
+            spread: 0.0
+            offset.y: 4
+            color: Qt.alpha("#000000", 0.10)
+            opacity: root.openProgress
+            z: menuCard.z - 1
+        }
+
+        Rectangle {
+            id: menuCard
+            anchors.fill: parent
+            anchors.margins: 6
+            radius: 18
+            color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.95 : 0.97)
+            border.width: 0
+            clip: true
+            focus: Config.trayPopoverOpen
+            Keys.onEscapePressed: Config.trayPopoverOpen = false
+
+            MouseArea {
+                anchors.fill: parent
+            }
+
+        opacity: Math.max(0.0, Math.min(1.0, root.openProgress * 1.5))
+        scale: 0.94 + (0.06 * root.openProgress)
         transformOrigin: Item.TopRight
 
         ColumnLayout {
@@ -120,13 +149,21 @@ PanelWindow {
                         implicitHeight: 15
                         asynchronous: true
                         source: Config.resolveIcon(Config.activeTrayItem?.icon ?? "", "application-x-executable")
+                        layer.enabled: !Theme.isDarkMode
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowColor: Qt.alpha("#000000", 0.65)
+                            shadowBlur: 0.22
+                            shadowHorizontalOffset: 0
+                            shadowVerticalOffset: 0.5
+                        }
                     }
 
                     Text {
                         text: {
                             const rawId = Config.activeTrayItem?.id ?? "App";
                             const clean = rawId.replace(/_status_icon.*$/, "").replace(/^[a-z]/, c => c.toUpperCase());
-                            return clean || "Aplikasi";
+                            return clean || "App";
                         }
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -253,7 +290,7 @@ PanelWindow {
                 }
 
                 Accessible.role: Accessible.MenuItem
-                Accessible.name: knownProcess !== "" ? "Tutup Aplikasi" : "Aktivasi Sekunder"
+                Accessible.name: knownProcess !== "" ? "Quit App" : "Secondary Action"
 
                 function triggerFallback() {
                     Config.activeTrayItem?.secondaryActivate();
@@ -272,7 +309,7 @@ PanelWindow {
                     anchors.leftMargin: 8
                     anchors.right: parent.right
                     anchors.rightMargin: 8
-                    text: quitFallbackBtn.knownProcess !== "" ? "Tutup Aplikasi" : "Aktivasi Sekunder"
+                    text: quitFallbackBtn.knownProcess !== "" ? "Quit App" : "Secondary Action"
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
@@ -288,6 +325,7 @@ PanelWindow {
                     onClicked: quitFallbackBtn.triggerFallback()
                 }
             }
+        }
         }
     }
 }

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Widgets
 import Quickshell.Services.Mpris
 import "../config"
 import "../components"
@@ -53,14 +54,17 @@ Item {
         repeat: false
     }
 
-    // Drop shadow
+    // Light-mode elevation shadow (fades out when attached popover opens so neck has zero seam)
     RectangularShadow {
+        visible: !Theme.isDarkMode
         anchors.fill: pillCard
         radius: pillCard.radius
         blur: 10
         spread: 0.0
         offset.y: 2
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.38 : 0.08)
+        color: Qt.alpha("#000000", 0.10)
+        opacity: Config.centerPopoverOpen ? 0.0 : 1.0
+        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
     }
 
     // Outer Pill Capsule
@@ -68,8 +72,10 @@ Item {
         id: pillCard
         anchors.fill: parent
         radius: Math.round(height / 2)
-        color: Qt.alpha(mouseArea.containsMouse ? Theme.surfaceContainerHigh : Theme.surface, Theme.barOpacity)
-        border.width: Config.centerPopoverOpen ? 1 : 0
+        color: Config.centerPopoverOpen
+            ? Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
+            : Qt.alpha(mouseArea.containsMouse ? Theme.surfaceContainerHigh : Theme.surface, Theme.barOpacity)
+        border.width: 0
         border.color: Theme.primary
         border.pixelAligned: true
         antialiasing: true
@@ -195,43 +201,27 @@ Item {
                             height: 20
                             anchors.verticalCenter: parent.verticalCenter
 
-                            Rectangle {
-                                id: avatarMask
+                            ClippingRectangle {
                                 anchors.fill: parent
                                 radius: 10
-                                color: "#ffffff"
-                                visible: false
-                                layer.enabled: true
-                            }
+                                color: Theme.accent
+                                border.width: 0
 
-                            Item {
-                                anchors.fill: parent
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    maskEnabled: true
-                                    maskSource: avatarMask
-                                    maskSpreadAtMin: 1.0
-                                    maskThresholdMin: 0.5
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: Theme.accent
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: root.userName.slice(0, 1).toUpperCase()
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        font.weight: Font.Bold
-                                        color: Theme.accentOnFill
-                                    }
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: root.userName.slice(0, 1).toUpperCase()
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    color: Theme.accentOnFill
                                 }
 
                                 Image {
                                     id: avatarImg
                                     anchors.fill: parent
                                     source: root.avatarPath
+                                    sourceSize.width: 48
+                                    sourceSize.height: 48
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     visible: status === Image.Ready
@@ -315,34 +305,18 @@ Item {
                             height: 20
                             anchors.verticalCenter: parent.verticalCenter
 
-                            Rectangle {
-                                id: logoMask
+                            ClippingRectangle {
                                 anchors.fill: parent
                                 radius: 5
-                                color: "#ffffff"
-                                visible: false
-                                layer.enabled: true
-                            }
-
-                            Item {
-                                anchors.fill: parent
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    maskEnabled: true
-                                    maskSource: logoMask
-                                    maskSpreadAtMin: 1.0
-                                    maskThresholdMin: 0.5
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: root.isSpotify ? "#1DB954" : Theme.primaryContainer
-                                }
+                                color: root.isSpotify ? "#1DB954" : Theme.primaryContainer
+                                border.width: 0
 
                                 Image {
                                     id: albumArtThumb
                                     anchors.fill: parent
                                     source: root.artUrl
+                                    sourceSize.width: 48
+                                    sourceSize.height: 48
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     visible: status === Image.Ready
@@ -352,6 +326,8 @@ Item {
                                     anchors.fill: parent
                                     anchors.margins: 2
                                     source: `${Quickshell.env("HOME")}/.config/quickshell/sora/assets/spotify.svg`
+                                    sourceSize.width: 36
+                                    sourceSize.height: 36
                                     fillMode: Image.PreserveAspectFit
                                     visible: root.isSpotify && albumArtThumb.status !== Image.Ready
                                     smooth: true
@@ -492,7 +468,7 @@ Item {
                             SequentialAnimation {
                                 id: marqueeAnim
                                 loops: Animation.Infinite
-                                running: root.isPlaying && mediaTitleBox.isOverflow && root.currentPage === 1
+                                running: root.isPlaying && mediaTitleBox.isOverflow && root.currentPage === 1 && !Config.isCurrentFullscreen && !Config.lockScreenOpen
 
                                 PauseAnimation { duration: 1400 }
                                 NumberAnimation {
@@ -528,7 +504,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     SequentialAnimation on height {
-                                        running: root.isPlaying && root.currentPage === 1
+                                        running: root.isPlaying && root.currentPage === 1 && !Config.isCurrentFullscreen && !Config.lockScreenOpen
                                         loops: Animation.Infinite
                                         NumberAnimation { from: modelData.hMin; to: modelData.hMax; duration: modelData.dur; easing.type: Easing.InOutQuad }
                                         NumberAnimation { from: modelData.hMax; to: modelData.hMin; duration: modelData.dur; easing.type: Easing.InOutQuad }
@@ -620,7 +596,7 @@ Item {
                             MatIcon {
                                 icon: "memory"
                                 size: 12
-                                color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.primary
+                                color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.accentInk
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
@@ -647,7 +623,7 @@ Item {
                                     width: Math.max(2, Math.round(parent.width * Math.min(1.0, SysMonitor.cpuPercent / 100)))
                                     height: parent.height
                                     radius: 1.5
-                                    color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.primary
+                                    color: SysMonitor.cpuPercent >= 85 ? Theme.urgent : Theme.accentInk
                                     Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
@@ -752,7 +728,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 4
             visible: !RecorderService.isRecording
-            opacity: mouseArea.containsMouse || Config.centerPopoverOpen ? 0.9 : 0.38
+            opacity: (mouseArea.containsMouse || Config.centerPopoverOpen) ? 0.85 : 0.0
             z: 10
 
             Behavior on opacity { NumberAnimation { duration: Theme.animFast } }

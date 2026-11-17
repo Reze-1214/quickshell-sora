@@ -165,27 +165,30 @@ PanelWindow {
         if (Config.launcherOpen) searchField.forceActiveFocus();
     }
 
-    // Smooth Dim Backdrop (In & Out fade)
+    // Smooth Dim Backdrop inset cleanly inside ScreenBorder frame
+    MouseArea {
+        anchors.fill: parent
+        enabled: Config.launcherOpen
+        onClicked: Config.launcherOpen = false
+    }
+
     Rectangle {
         id: backdrop
         anchors.fill: parent
+        anchors.margins: Math.max(0, Config.screenBorderSize)
+        radius: Config.screenBorderRadius
         color: Qt.alpha(Theme.background, (Theme.isDarkMode ? 0.38 : 0.16) * root.openProgress)
         opacity: root.openProgress
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: Config.launcherOpen
-            onClicked: Config.launcherOpen = false
-        }
     }
 
     RectangularShadow {
+        visible: !Theme.isDarkMode
         anchors.fill: startMenuCard
         radius: startMenuCard.radius
         blur: Math.round(16 + 8 * root.openProgress)
         spread: 0.0
         offset.y: Math.round(4 + 4 * root.openProgress)
-        color: Qt.alpha("#000000", (Theme.isDarkMode ? 0.44 : 0.12) * root.openProgress)
+        color: Qt.alpha("#000000", 0.12 * root.openProgress)
         opacity: root.openProgress
         scale: startMenuCard.scale
         z: startMenuCard.z - 1
@@ -256,7 +259,7 @@ PanelWindow {
 
                             Text {
                                 anchors.fill: parent
-                                text: "Cari aplikasi atau jalankan perintah..."
+                                text: "Search apps or run a command..."
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
                                 color: Theme.subtext
@@ -291,7 +294,7 @@ PanelWindow {
                             color: clearSearchM.containsMouse ? Theme.surfaceContainerHigh : Theme.surfaceContainer
                             activeFocusOnTab: searchField.text.length > 0 && Config.launcherOpen
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Bersihkan pencarian"
+                            Accessible.name: "Clear search"
 
                             MatIcon {
                                 anchors.centerIn: parent
@@ -358,7 +361,7 @@ PanelWindow {
                             ? Theme.surfaceContainerHigh
                             : (rowMouse.containsMouse ? Theme.surfaceContainer : "transparent")
                         border.width: isSelected ? 1 : 0
-                        border.color: Theme.accent
+                        border.color: Theme.accentInk
 
                         Behavior on color { ColorAnimation { duration: 90 } }
 
@@ -390,7 +393,7 @@ PanelWindow {
                                 }
 
                                 Text {
-                                    text: searchRow.modelData.comment || searchRow.modelData.genericName || "Aplikasi"
+                                    text: searchRow.modelData.comment || searchRow.modelData.genericName || "App"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: Theme.subtext
@@ -408,7 +411,7 @@ PanelWindow {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Buka ↵"
+                                    text: "Open ↵"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.DemiBold
@@ -467,7 +470,7 @@ PanelWindow {
                                 spacing: 1
 
                                 Text {
-                                    text: "Jalankan perintah shell"
+                                    text: "Run shell command"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 13
                                     font.weight: Font.DemiBold
@@ -492,7 +495,7 @@ PanelWindow {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Jalankan ↵"
+                                    text: "Run ↵"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.DemiBold
@@ -529,7 +532,7 @@ PanelWindow {
                             color: backHover.containsMouse ? Theme.surfaceContainer : Theme.surface
                             activeFocusOnTab: root.showAllApps && Config.launcherOpen
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Kembali ke daftar utama"
+                            Accessible.name: "Back to main list"
 
                             RowLayout {
                                 id: backBtn
@@ -543,7 +546,7 @@ PanelWindow {
                                 }
 
                                 Text {
-                                    text: "Kembali"
+                                    text: "Back"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
@@ -566,7 +569,7 @@ PanelWindow {
                         Item { Layout.fillWidth: true }
 
                         Text {
-                            text: "Semua Aplikasi"
+                            text: "All Applications"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                             font.weight: Font.DemiBold
@@ -635,7 +638,7 @@ PanelWindow {
                         Layout.fillWidth: true
 
                         Text {
-                            text: "Aplikasi Utama"
+                            text: "Pinned Apps"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
@@ -651,7 +654,7 @@ PanelWindow {
                             color: allBtnM.containsMouse ? Theme.surfaceContainer : Theme.surface
                             activeFocusOnTab: !root.showAllApps && searchField.text.trim().length === 0 && Config.launcherOpen
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Lihat semua aplikasi"
+                            Accessible.name: "View all applications"
 
                             RowLayout {
                                 id: allLabel
@@ -659,7 +662,7 @@ PanelWindow {
                                 spacing: 3
 
                                 Text {
-                                    text: "Semua aplikasi"
+                                    text: "All apps"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
@@ -748,7 +751,7 @@ PanelWindow {
                         visible: root.recentApps.length > 0
 
                         Text {
-                            text: "Terakhir Dibuka"
+                            text: "Recent"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
@@ -776,7 +779,7 @@ PanelWindow {
                                 color: recM.containsMouse ? Theme.surfaceContainer : Theme.surface
                                 activeFocusOnTab: !root.showAllApps && searchField.text.trim().length === 0 && Config.launcherOpen
                                 Accessible.role: Accessible.Button
-                                Accessible.name: recTile.modelData.name ?? "Aplikasi"
+                                Accessible.name: recTile.modelData.name ?? "App"
 
                                 Behavior on color { ColorAnimation { duration: 90 } }
 
@@ -808,7 +811,7 @@ PanelWindow {
                                         }
 
                                         Text {
-                                            text: recTile.modelData.comment || recTile.modelData.genericName || "Aplikasi"
+                                            text: recTile.modelData.comment || recTile.modelData.genericName || "App"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
                                             color: Theme.subtext
@@ -931,7 +934,7 @@ PanelWindow {
                         color: setM.containsMouse ? Theme.surfaceContainer : "transparent"
                         activeFocusOnTab: Config.launcherOpen
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Buka Dashboard Pengaturan"
+                        Accessible.name: "Open Settings Dashboard"
 
                         MatIcon {
                             anchors.centerIn: parent
@@ -966,7 +969,7 @@ PanelWindow {
                         border.color: Theme.urgentInk
                         activeFocusOnTab: Config.launcherOpen
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Buka Menu Daya"
+                        Accessible.name: "Open Power Menu"
 
                         MatIcon {
                             anchors.centerIn: parent

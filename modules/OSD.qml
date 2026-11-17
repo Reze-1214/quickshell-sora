@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import "../config"
 import "../components"
 import "../services"
-import "widgets"
 
-// Audio Output & Microphone OSD (Matte Hardware Instrument, strictly separate from BrightnessOSD)
+// Compact pill OSD for Audio Output & Microphone
 PanelWindow {
     id: root
 
@@ -20,15 +20,15 @@ PanelWindow {
     }
 
     margins {
-        bottom: 44
+        bottom: 36
     }
 
-    implicitWidth: 312
-    implicitHeight: 78
+    implicitWidth: 236
+    implicitHeight: 56
     color: "transparent"
 
     mask: Region {
-        item: tray
+        item: pill
     }
 
     property bool shown: false
@@ -87,7 +87,7 @@ PanelWindow {
         if (!root.ready) return;
         root.isMicMode = true;
         root.isMutedState = root.currentMicMuted;
-        root.osdLabel = "Mikrofon";
+        root.osdLabel = "Microphone";
         root.osdValue = root.currentMicMuted ? 0.0 : root.currentMicVolume;
         root.osdIcon = root.currentMicMuted ? "mic_off" : "mic";
         root.shown = true;
@@ -106,15 +106,28 @@ PanelWindow {
     onCurrentMicVolumeChanged: triggerMic()
     onCurrentMicMutedChanged: triggerMic()
 
-    WidgetChassis {
-        id: tray
-        anchors.centerIn: parent
-        width: 288
-        height: 54
-        bezelPadding: 4
-        outerRadius: 16
+    RectangularShadow {
+        visible: !Theme.isDarkMode
+        anchors.fill: pill
+        radius: pill.radius
+        blur: 10
+        spread: 0.0
+        offset.y: 2
+        color: Qt.alpha("#000000", 0.10)
         opacity: root.openProgress
-        transform: Translate { y: (1.0 - root.openProgress) * 8 }
+    }
+
+    Rectangle {
+        id: pill
+        anchors.centerIn: parent
+        width: 212
+        height: 36
+        radius: 18
+        color: Qt.alpha(Theme.surface, Theme.isDarkMode ? 0.94 : 0.98)
+        border.width: Theme.isDarkMode ? 1 : 0
+        border.color: Theme.outline
+        opacity: root.openProgress
+        transform: Translate { y: (1.0 - root.openProgress) * 6 }
 
         HoverHandler {
             id: osdHover
@@ -134,157 +147,30 @@ PanelWindow {
 
         RowLayout {
             anchors.fill: parent
-            spacing: 4
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 10
 
-            // Left Matte Audio Level Readout & Interactive Fader Rail
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: tray.innerRadius
-                color: tray.colTray
-                border.width: 1
-                border.color: tray.colTrayBorder
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    anchors.topMargin: 8
-                    anchors.bottomMargin: 9
-                    spacing: 0
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        spacing: 6
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.osdLabel
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            font.weight: Font.DemiBold
-                            color: tray.colInk
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            text: root.isMutedState ? "BISU" : `${Math.round(root.osdValue * 100)}%`
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            font.weight: Font.Bold
-                            font.features: Theme.tabularFeatures
-                            color: root.isMutedState ? tray.colUrgentInk : tray.colInk
-                        }
-                    }
-
-                    Item { Layout.fillHeight: true }
-
-                    Item {
-                        id: audioRail
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 12
-                        Layout.fillHeight: false
-
-                        Rectangle {
-                            id: railBg
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            height: 5
-                            radius: 2.5
-                            color: Qt.alpha(tray.colTrack, 0.55)
-                            clip: true
-
-                            Rectangle {
-                                width: Math.round(parent.width * root.displayRatio)
-                                height: parent.height
-                                radius: 2.5
-                                color: root.isMutedState ? tray.colUrgentInk : tray.colAccentOnTray
-                                Behavior on width {
-                                    enabled: !railMa.pressed
-                                    NumberAnimation { duration: 85; easing.type: Easing.OutCubic }
-                                }
-                            }
-                        }
-
-                        // Vertical hardware fader tick cap
-                        Rectangle {
-                            visible: !root.isMutedState
-                            width: railMa.pressed ? 4 : 3
-                            height: (railMa.containsMouse || railMa.pressed) ? 12 : 9
-                            radius: 1.5
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: Math.max(0, Math.min(parent.width - width, Math.round(parent.width * root.displayRatio) - (width / 2)))
-                            color: tray.colInk
-                            Behavior on height { NumberAnimation { duration: 90 } }
-                            Behavior on x {
-                                enabled: !railMa.pressed
-                                NumberAnimation { duration: 85; easing.type: Easing.OutCubic }
-                            }
-                        }
-
-                        MouseArea {
-                            id: railMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            preventStealing: true
-                            cursorShape: Qt.PointingHandCursor
-                            onPressed: mouse => root.applyAudioRatio(mouse.x / Math.max(1, width))
-                            onPositionChanged: mouse => {
-                                if (pressed) root.applyAudioRatio(mouse.x / Math.max(1, width));
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Right Solid Status & Mute Action Pod
-            Rectangle {
-                id: mutePod
-                readonly property bool idleZero: !root.isMutedState && root.osdValue <= 0.001
-                readonly property color podBg: root.isMutedState
-                    ? tray.colUrgentFill
-                    : (idleZero ? tray.colTray : tray.colAccent)
-                readonly property color podFg: root.isMutedState
-                    ? tray.colUrgentText
-                    : (idleZero ? tray.colMuted : tray.colAccentText)
-
-                Layout.preferredWidth: 52
-                Layout.fillWidth: false
-                Layout.fillHeight: true
-                radius: tray.innerRadius
-                color: podBg
-                border.width: idleZero ? 1 : 0
-                border.color: tray.colTrayBorder
+            // Clickable mute icon
+            Item {
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
                 Accessible.role: Accessible.Button
                 Accessible.name: root.isMicMode
-                    ? (root.isMutedState ? "Aktifkan Mikrofon" : "Bisukan Mikrofon")
-                    : (root.isMutedState ? "Bunyikan Volume" : "Bisukan Volume")
-
-                Behavior on color { ColorAnimation { duration: 120; easing.type: Easing.OutCubic } }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: parent.radius
-                    visible: muteMa.containsMouse || muteMa.pressed
-                    color: Theme.relLum(mutePod.podFg) < 0.3
-                        ? Qt.rgba(0, 0, 0, muteMa.pressed ? 0.14 : 0.07)
-                        : Qt.rgba(1, 1, 1, muteMa.pressed ? 0.16 : 0.09)
-                }
+                    ? (root.isMutedState ? "Unmute Microphone" : "Mute Microphone")
+                    : (root.isMutedState ? "Unmute Volume" : "Mute Volume")
 
                 MatIcon {
                     anchors.centerIn: parent
                     icon: root.osdIcon
-                    size: 20
+                    size: 16
                     fill: 1.0
-                    color: mutePod.podFg
+                    color: root.isMutedState ? Theme.urgentInk : Theme.accentInk
                 }
 
                 MouseArea {
-                    id: muteMa
                     anchors.fill: parent
-                    hoverEnabled: true
+                    anchors.margins: -4
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (root.isMicMode) AudioService.toggleMicMute();
@@ -292,6 +178,55 @@ PanelWindow {
                         hideTimer.restart();
                     }
                 }
+            }
+
+            // Slim interactive progress bar
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 16
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 5
+                    radius: 2.5
+                    color: Theme.surfaceContainerHighest
+                    clip: true
+
+                    Rectangle {
+                        width: Math.round(parent.width * root.displayRatio)
+                        height: parent.height
+                        radius: 2.5
+                        color: root.isMutedState ? Theme.urgentInk : Theme.primary
+                        Behavior on width {
+                            enabled: !railMa.pressed
+                            NumberAnimation { duration: 85; easing.type: Easing.OutCubic }
+                        }
+                    }
+                }
+
+                MouseArea {
+                    id: railMa
+                    anchors.fill: parent
+                    preventStealing: true
+                    cursorShape: Qt.PointingHandCursor
+                    onPressed: mouse => root.applyAudioRatio(mouse.x / Math.max(1, width))
+                    onPositionChanged: mouse => {
+                        if (pressed) root.applyAudioRatio(mouse.x / Math.max(1, width));
+                    }
+                }
+            }
+
+            Text {
+                Layout.preferredWidth: 32
+                horizontalAlignment: Text.AlignRight
+                text: root.isMutedState ? "Mute" : `${Math.round(root.osdValue * 100)}%`
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                font.features: Theme.tabularFeatures
+                color: root.isMutedState ? Theme.urgentInk : Theme.text
             }
         }
     }

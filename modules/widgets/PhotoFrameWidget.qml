@@ -35,9 +35,9 @@ Item {
         pickPhotoProc.command = [
             "sh", "-c",
             "if command -v zenity >/dev/null 2>&1; then " +
-            "  zenity --file-selection --title='Pilih Foto Widget' --file-filter='Gambar | *.jpg *.jpeg *.png *.webp *.gif *.bmp *.svg *.JPG *.JPEG *.PNG *.WEBP' 2>/dev/null; " +
+            "  zenity --file-selection --title='Choose Widget Photo' --file-filter='Images | *.jpg *.jpeg *.png *.webp *.gif *.bmp *.svg *.JPG *.JPEG *.PNG *.WEBP' 2>/dev/null; " +
             "elif command -v kdialog >/dev/null 2>&1; then " +
-            "  kdialog --getopenfilename ~ 'Gambar (*.png *.jpg *.jpeg *.webp *.gif *.bmp)' 2>/dev/null; " +
+            "  kdialog --getopenfilename ~ 'Images (*.png *.jpg *.jpeg *.webp *.gif *.bmp)' 2>/dev/null; " +
             "fi"
         ];
         pickPhotoProc.running = true;
@@ -75,7 +75,7 @@ Item {
             border.color: (photoMa.containsMouse || photoTile.activeFocus) ? tray.colAccentOnTray : tray.colTrayBorder
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
-            Accessible.name: "Widget Foto 1:1 - Klik untuk ganti foto, klik kanan untuk reset"
+            Accessible.name: "1:1 Photo Widget - Click to change photo, right-click to reset"
 
             Behavior on border.color {
                 ColorAnimation { duration: 120 }
@@ -119,7 +119,7 @@ Item {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "Pilih Foto"
+                        text: "Choose Photo"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         font.weight: Font.DemiBold

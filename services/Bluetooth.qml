@@ -48,7 +48,9 @@ Singleton {
             root.scanning = false;
             scanProc.running = false;
         }
-        powerProc.command = ["bluetoothctl", "power", nextPower ? "on" : "off"];
+        powerProc.command = nextPower
+            ? ["sh", "-c", "rfkill unblock bluetooth >/dev/null 2>&1; bluetoothctl power on"]
+            : ["bluetoothctl", "power", "off"];
         powerProc.running = true;
     }
 
@@ -113,7 +115,7 @@ Singleton {
 
     Timer {
         id: bgPollTimer
-        interval: (Config.dashboardOpen && Config.activeSubPanel === "bluetooth") ? 3000 : 15000
+        interval: (Config.dashboardOpen && Config.activeSubPanel === "bluetooth") ? 3000 : 45000
         repeat: true
         running: true
         onTriggered: root.refresh()
@@ -180,7 +182,9 @@ Singleton {
             } else {
                 root.connectedDevice = "";
             }
-            root.loadDevices();
+            if ((Config.dashboardOpen && Config.activeSubPanel === "bluetooth") || root.scanning) {
+                root.loadDevices();
+            }
         }
     }
 

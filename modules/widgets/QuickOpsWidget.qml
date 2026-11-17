@@ -54,7 +54,7 @@ Item {
                             radius: 7
                             activeFocusOnTab: AudioService.ready || activeFocus
                             Accessible.role: Accessible.Button
-                            Accessible.name: root.isMuted ? "Bunyikan Output" : "Bisukan Output"
+                            Accessible.name: root.isMuted ? "Unmute Output" : "Mute Output"
                             opacity: AudioService.ready ? 1.0 : 0.42
                             color: root.isMuted
                                 ? tray.colUrgentFill
@@ -93,7 +93,7 @@ Item {
                             value: root.currentVol
                             muted: root.isMuted
                             slEnabled: AudioService.ready
-                            accessName: "Volume Output"
+                            accessName: "Output Volume"
                             onMoved: r => AudioService.setVolume(r)
                             onStepped: d => AudioService.changeVolume(d)
                         }
@@ -134,7 +134,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             value: root.currentBright
-                            accessName: "Kecerahan Layar"
+                            accessName: "Screen Brightness"
                             onMoved: r => Brightness.setBrightness(Math.max(5, Math.min(100, r * 100)))
                             onStepped: d => Brightness.setBrightness(Math.max(5, Math.min(100, (root.currentBright + d) * 100)))
                         }
@@ -169,7 +169,7 @@ Item {
                     tone: AudioService.micMuted ? "urgent" : "neutral"
                     active: AudioService.micMuted
                     padEnabled: AudioService.micReady
-                    accessName: AudioService.micMuted ? "Aktifkan Mikrofon" : "Bisukan Mikrofon"
+                    accessName: AudioService.micMuted ? "Unmute Microphone" : "Mute Microphone"
                     onTriggered: AudioService.toggleMicMute()
                 }
 
@@ -179,7 +179,7 @@ Item {
                     label: Network.wifiEnabled ? (Network.isConnected ? "Wi-Fi" : "No Net") : "Off"
                     tone: Network.wifiEnabled ? "accent" : "neutral"
                     active: Network.wifiEnabled
-                    accessName: "Alihkan Wi-Fi"
+                    accessName: "Toggle Wi-Fi"
                     onTriggered: Network.toggleWifi()
                     onSecondaryTriggered: {
                         Config.closeAllOverlays();
@@ -204,7 +204,7 @@ Item {
                         : (PowerService.activeProfile === "power-saver" ? "success" : "neutral")
                     active: PowerService.activeProfile !== "balanced"
                     accessRole: Accessible.Button
-                    accessName: "Ganti Profil Daya"
+                    accessName: "Cycle Power Profile"
                     onTriggered: PowerService.cycleProfile()
                 }
 
@@ -214,7 +214,7 @@ Item {
                     label: "Night"
                     tone: Config.nightLightEnabled ? "accent" : "neutral"
                     active: Config.nightLightEnabled
-                    accessName: "Alihkan Mode Malam"
+                    accessName: "Toggle Night Light"
                     onTriggered: Config.toggleNightLight()
                 }
             }

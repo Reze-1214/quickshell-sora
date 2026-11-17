@@ -35,11 +35,13 @@ PanelWindow {
     visible: openProgress > 0.005
 
     property int selectedIndex: 0
+    property real animTarget: 0.0
     property real animIndex: 0.0
     property bool userNavigated: false
     property double lastWheelMs: 0
     property real dragStartX: 0
     property int dragStartIndex: 0
+    property real dragStartAnim: 0.0
 
     // Smooth continuous cubic-bezier glide across full screen width (260ms OutCubic)
     Behavior on animIndex {
@@ -50,101 +52,108 @@ PanelWindow {
         }
     }
 
-    // Matte hardware visual tokens
-    readonly property color colChassis: "#0C0E10"
-    readonly property color colHairline: Qt.rgba(1, 1, 1, 0.08)
-    readonly property color colHairlineStrong: Qt.rgba(1, 1, 1, 0.16)
-    readonly property color colText: "#F2F4F5"
-    readonly property color colMuted: "#9DA6AD"
-    readonly property color colAccent: Theme.contrastRatio(Theme.accent, colChassis) >= 3.0
-        ? Theme.accent
-        : Theme.ensureContrast(Theme.accent, colChassis, 4.5, true)
-    readonly property color colAccentOnFill: Theme.contrastRatio("#0B0D0F", colAccent) >= Theme.contrastRatio("#F4F6F6", colAccent)
-        ? "#0B0D0F"
-        : "#F4F6F6"
-    // Refined, softer active border contrast that blends naturally with chassis without screaming
-    readonly property color colActiveBorder: Theme.blendRgb(colChassis, colAccent, 0.65)
+    // Mode-aware matte gallery tokens
+    readonly property color colChassis: Theme.isDarkMode ? "#0C0E10" : Theme.surface
+    readonly property color colHairline: Theme.isDarkMode ? Qt.rgba(1, 1, 1, 0.08) : Theme.outline
+    readonly property color colHairlineStrong: Theme.isDarkMode ? Qt.rgba(1, 1, 1, 0.16) : Theme.outlineStrong
+    readonly property color colText: Theme.isDarkMode ? "#F2F4F5" : Theme.text
+    readonly property color colMuted: Theme.isDarkMode ? "#9DA6AD" : Theme.subtext
+    readonly property color colAccent: Theme.isDarkMode
+        ? (Theme.contrastRatio(Theme.accent, colChassis) >= 3.0
+            ? Theme.accent
+            : Theme.ensureContrast(Theme.accent, colChassis, 4.5, true))
+        : Theme.accentInk
+    // Crisp active border accent that separates cleanly from the backdrop scrim
+    readonly property color colActiveBorder: Theme.blendRgb(colChassis, colAccent, 0.85)
 
-    // Full horizontal coverflow dimensions (Main card 420x236, 16:9)
-    readonly property int mainCardWidth: 420
-    readonly property int mainCardHeight: 236
-    readonly property int innerSliceWidth: 100
-    readonly property int sliceGap: 12
-    readonly property int stageHeight: 260
+    // Full-width horizontal stacked coverflow dimensions (1366px baseline, 16:9 center + 3 tucked wings per side)
+    readonly property real layoutScale: width > 0 ? Math.max(0.75, Math.min(1.45, width / 1366.0)) : 1.0
+    readonly property int mainCardWidth: Math.round(436 * layoutScale)
+    readonly property int mainCardHeight: Math.round(245 * layoutScale)
+    readonly property int stageHeight: Math.round(276 * layoutScale)
 
     readonly property int totalCount: ThemeEngine.wallpapers ? ThemeEngine.wallpapers.length : 0
+    readonly property bool isCircular: totalCount >= 5
     readonly property string selectedPath: (selectedIndex >= 0 && selectedIndex < totalCount)
         ? ThemeEngine.wallpapers[selectedIndex]
         : ""
-    readonly property string selectedFilename: selectedPath.length > 0 ? selectedPath.split("/").pop() : ""
     readonly property bool selectedIsActive: selectedPath.length > 0 && selectedPath === Config.wallpaperPath
 
-    function sliceWidthForDist(absD: real): real {
-        if (absD <= 1.0) {
-            const t = 0.5 * (1.0 + Math.cos(Math.PI * absD));
-            return root.innerSliceWidth + (root.mainCardWidth - root.innerSliceWidth) * t;
-        }
-        if (absD <= 2.0) {
-            const u = absD - 1.0;
-            const t = 0.5 * (1.0 + Math.cos(Math.PI * u));
-            return 74 + (root.innerSliceWidth - 74) * t;
-        }
-        if (absD <= 3.0) {
-            const u = absD - 2.0;
-            const t = 0.5 * (1.0 + Math.cos(Math.PI * u));
-            return 56 + (74 - 56) * t;
-        }
-        return 56;
+    // Stops for [absDist = 0, 1, 2, 3, 4]: center offset, base width, height scale
+    readonly property var deckStops: [
+        ({ cx: 0.0,   w: 436.0, s: 1.00 }),
+        ({ cx: 294.0, w: 200.0, s: 0.88 }),
+        ({ cx: 450.0, w: 192.0, s: 0.83 }),
+        ({ cx: 594.0, w: 186.0, s: 0.78 }),
+        ({ cx: 725.0, w: 176.0, s: 0.74 })
+    ]
+
+    function normalizeIndex(idx: int): int {
+        const n = root.totalCount;
+        if (n <= 0) return 0;
+        if (root.isCircular) return ((idx % n) + n) % n;
+        return Math.max(0, Math.min(n - 1, idx));
     }
 
-    // Continuous cosine falloff across full monitor width: 96% at wing 1, fading to 0 at edge
-    function opacityForDist(absD: real): real {
-        if (absD <= 1.0) return 1.0 - absD * 0.04;
-        if (absD >= 4.2) return 0.0;
-        const t = (absD - 1.0) / 3.2;
-        return 0.96 * 0.5 * (1.0 + Math.cos(Math.PI * t));
+    function shortestDelta(fromIdx: int, toIdx: int): int {
+        const n = root.totalCount;
+        if (n <= 0) return 0;
+        if (!root.isCircular) return toIdx - fromIdx;
+        let d = ((toIdx - fromIdx) % n + n) % n;
+        if (d > n * 0.5) d -= n;
+        return d;
     }
 
-    // Coverflow metrics across full screen width (root.width)
+    // Smoothly interpolated coverflow metrics across 3 tucked wings on each side
     readonly property var slotMetrics: {
         const n = root.totalCount;
         if (n <= 0) return [];
-        const focus = Math.max(0.0, Math.min(n - 1, root.animIndex));
-        const widths = new Array(n);
-        const lefts = new Array(n);
-        let cursor = 0.0;
-        for (let i = 0; i < n; i++) {
-            const w = root.sliceWidthForDist(Math.abs(i - focus));
-            widths[i] = w;
-            lefts[i] = cursor;
-            cursor += w + root.sliceGap;
-        }
-        const k = Math.max(0, Math.min(n - 1, Math.floor(focus)));
-        const kNext = Math.min(n - 1, k + 1);
-        const frac = focus - k;
-        const centerK = lefts[k] + widths[k] * 0.5;
-        const centerNext = lefts[kNext] + widths[kNext] * 0.5;
-        const focalX = (1.0 - frac) * centerK + frac * centerNext;
+        const circular = root.isCircular;
+        const focus = circular ? root.animIndex : Math.max(0.0, Math.min(n - 1, root.animIndex));
         const stageCenter = root.width * 0.5;
+        const fitScale = root.layoutScale;
+        const stops = root.deckStops;
+        const fadeEnd = circular ? (n >= 7 ? 3.55 : n * 0.5 - 0.08) : 3.55;
+        const fadeStart = Math.max(1.0, fadeEnd - 0.55);
 
         const out = new Array(n);
         for (let i = 0; i < n; i++) {
-            const dist = i - focus;
+            let dist = i - focus;
+            if (circular) {
+                dist = ((dist % n) + n) % n;
+                if (dist > n * 0.5) dist -= n;
+            }
             const absD = Math.abs(dist);
             const sign = dist < 0 ? -1.0 : (dist > 0 ? 1.0 : 0.0);
-            const coverflowTuck = sign * Math.min(3.0, absD) * 5.0;
-            const scaleVal = Math.max(0.78, 1.0 - Math.pow(Math.min(3.5, absD) / 3.5, 1.1) * 0.22);
-            const opacityVal = root.opacityForDist(absD);
+
+            const seg = Math.min(3, Math.floor(absD));
+            const u = Math.min(1.0, Math.max(0.0, absD - seg));
+            const easeU = 0.5 * (1.0 - Math.cos(Math.PI * u));
+            const a = stops[seg];
+            const b = stops[seg + 1];
+
+            const cx = (a.cx + (b.cx - a.cx) * u) * fitScale;
+            const w = (a.w + (b.w - a.w) * easeU) * fitScale;
+            const s = (a.s + (b.s - a.s) * easeU);
+
+            let opacityVal = 0.0;
+            if (absD <= fadeStart) {
+                opacityVal = Math.max(0.84, 1.0 - Math.max(0.0, absD - 1.0) * 0.06);
+            } else if (absD < fadeEnd) {
+                const ft = (absD - fadeStart) / (fadeEnd - fadeStart);
+                opacityVal = Math.max(0.84, 1.0 - Math.max(0.0, fadeStart - 1.0) * 0.06) * 0.5 * (1.0 + Math.cos(Math.PI * ft));
+            }
+
             out[i] = {
-                x: stageCenter + lefts[i] - focalX - coverflowTuck,
-                w: widths[i],
+                x: stageCenter + sign * cx - w * 0.5,
+                w: w,
                 dist: dist,
                 absDist: absD,
-                scale: scaleVal,
+                scale: s,
                 opacity: opacityVal,
                 focusWeight: Math.max(0.0, 1.0 - Math.min(1.0, absD)),
-                z: 100 - Math.round(absD * 20),
-                visible: absD < 4.2
+                z: 1000 - Math.round(absD * 100),
+                visible: absD < fadeEnd && opacityVal > 0.01
             };
         }
         return out;
@@ -156,23 +165,38 @@ PanelWindow {
         return "file://" + filePath.replace(/%/g, "%25").replace(/#/g, "%23").replace(/\?/g, "%3F");
     }
 
-    function scrollToIndex(idx: int, instant: bool): void {
+    function scrollToAnimTarget(nextAnim: real, instant: bool): void {
         if (root.totalCount <= 0) return;
-        const clamped = Math.max(0, Math.min(root.totalCount - 1, idx));
-        root.selectedIndex = clamped;
+        const targetIdx = root.normalizeIndex(Math.round(nextAnim));
+        const finalAnim = root.isCircular ? nextAnim : targetIdx;
+        root.selectedIndex = targetIdx;
+        root.animTarget = finalAnim;
         if (instant) {
             animIndexBehavior.enabled = false;
-            root.animIndex = clamped;
+            root.animIndex = finalAnim;
             animIndexBehavior.enabled = true;
         } else {
-            root.animIndex = clamped;
+            root.animIndex = finalAnim;
         }
+    }
+
+    function scrollToIndex(idx: int, instant: bool): void {
+        if (root.totalCount <= 0) return;
+        const targetIdx = root.normalizeIndex(idx);
+        if (instant || !root.isCircular) {
+            root.scrollToAnimTarget(targetIdx, instant);
+            return;
+        }
+        const curMod = root.normalizeIndex(Math.round(root.animTarget));
+        const delta = root.shortestDelta(curMod, targetIdx);
+        root.scrollToAnimTarget(Math.round(root.animTarget) + delta, false);
     }
 
     function syncToActiveWallpaper(instant: bool): void {
         const list = ThemeEngine.wallpapers ?? [];
         if (list.length === 0) {
             root.selectedIndex = 0;
+            root.animTarget = 0;
             animIndexBehavior.enabled = false;
             root.animIndex = 0;
             animIndexBehavior.enabled = true;
@@ -186,7 +210,11 @@ PanelWindow {
     function stepBy(delta: int): void {
         if (root.totalCount <= 0) return;
         root.userNavigated = true;
-        root.scrollToIndex(root.selectedIndex + delta, false);
+        if (root.isCircular) {
+            root.scrollToAnimTarget(root.animTarget + delta, false);
+        } else {
+            root.scrollToIndex(root.selectedIndex + delta, false);
+        }
     }
 
     function applySelected(): void {
@@ -262,44 +290,19 @@ PanelWindow {
             }
         }
 
+        // Backdrop scrim so the coverflow stage separates cleanly from the desktop wallpaper
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: Math.max(0, Config.screenBorderSize)
+            radius: Config.screenBorderRadius
+            color: Qt.rgba(0.04, 0.05, 0.06, (Theme.isDarkMode ? 0.62 : 0.42) * root.openProgress)
+        }
+
         // Transparent outside click-catcher (dismisses on clicking outside cards)
         MouseArea {
             anchors.fill: parent
             enabled: Config.wallpaperPickerOpen
             onClicked: Config.wallpaperPickerOpen = false
-        }
-
-        // Top-Left Minimal Index & Filename Pill
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.topMargin: 20
-            anchors.leftMargin: 24
-            height: 32
-            implicitWidth: Math.min(320, counterText.implicitWidth + 24)
-            radius: 10
-            color: root.colChassis
-            border.width: 1
-            border.color: root.colHairline
-            opacity: root.openProgress
-            visible: root.totalCount > 0
-
-            Text {
-                id: counterText
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                text: `${String(root.selectedIndex + 1).padStart(2, "0")} / ${String(root.totalCount).padStart(2, "0")}`
-                    + (root.selectedFilename.length > 0 ? ` · ${root.selectedFilename}` : "")
-                font.family: Theme.fontMono
-                font.pixelSize: 11
-                font.weight: Font.DemiBold
-                font.features: Theme.tabularFeatures
-                color: root.colMuted
-                elide: Text.ElideMiddle
-            }
         }
 
         // Top-Right Discreet Import Control Pill
@@ -314,10 +317,12 @@ PanelWindow {
             radius: 10
             activeFocusOnTab: Config.wallpaperPickerOpen
             Accessible.role: Accessible.Button
-            Accessible.name: "Import Gambar Wallpaper"
+            Accessible.name: "Import Wallpaper Image"
             color: importMouse.pressed
-                ? Qt.darker(root.colChassis, 1.2)
-                : (importMouse.containsMouse ? Theme.surfaceContainerHigh : root.colChassis)
+                ? (Theme.isDarkMode ? Qt.darker(root.colChassis, 1.2) : Theme.surfaceContainer)
+                : (importMouse.containsMouse
+                    ? (Theme.isDarkMode ? Theme.blendRgb(root.colChassis, "#FFFFFF", 0.12) : Theme.surfaceContainerHigh)
+                    : root.colChassis)
             border.width: 1
             border.color: topImportPill.activeFocus
                 ? root.colAccent
@@ -349,7 +354,7 @@ PanelWindow {
                 }
 
                 Text {
-                    text: "Import Gambar"
+                    text: "Import Wallpaper"
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
@@ -394,7 +399,7 @@ PanelWindow {
 
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "Belum ada wallpaper di folder koleksi"
+                    text: "No wallpapers in collection folder"
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -439,11 +444,10 @@ PanelWindow {
 
                     readonly property var metric: (index >= 0 && index < root.slotMetrics.length)
                         ? root.slotMetrics[index]
-                        : ({ x: 0, w: root.innerSliceWidth, dist: 99, absDist: 99, scale: 0.78, opacity: 0, focusWeight: 0, z: 0, visible: false })
+                        : ({ x: 0, w: 168, dist: 99, absDist: 99, scale: 0.78, opacity: 0, focusWeight: 0, z: 0, visible: false })
                     readonly property real absDist: metric.absDist
                     readonly property real focusWeight: metric.focusWeight
                     readonly property bool isCentered: index === root.selectedIndex
-                    readonly property bool isApplied: modelData === Config.wallpaperPath
 
                     x: metric.x
                     y: Math.round((carouselStage.height - root.mainCardHeight) * 0.5)
@@ -464,11 +468,11 @@ PanelWindow {
                         RectangularShadow {
                             anchors.fill: cardFrame
                             radius: cardFrame.radius
-                            blur: 16
+                            blur: 24
                             spread: 0
                             offset.x: 0
-                            offset.y: 4
-                            color: Qt.alpha("#000000", 0.22 + 0.22 * cardSlot.focusWeight)
+                            offset.y: 8
+                            color: Qt.alpha("#000000", 0.35 + 0.30 * cardSlot.focusWeight)
                         }
 
                         Rectangle {
@@ -476,7 +480,7 @@ PanelWindow {
                             anchors.fill: parent
                             radius: 14
                             color: root.colChassis
-                            border.width: 1
+                            border.width: cardSlot.isCentered ? 2 : 1
                             border.color: cardSlot.isCentered
                                 ? root.colActiveBorder
                                 : (cardMouse.containsMouse ? root.colHairlineStrong : root.colHairline)
@@ -525,35 +529,11 @@ PanelWindow {
                                 }
                             }
 
-                            // Gentle matte depth wash on side wings so artwork remains clear and vibrant
+                            // Depth wash on side wings so inactive cards visibly recede behind the active card
                             Rectangle {
                                 anchors.fill: parent
                                 visible: cardSlot.focusWeight < 0.995
-                                color: Qt.alpha("#0C0E10", (1.0 - cardSlot.focusWeight) * (cardMouse.containsMouse ? 0.06 : 0.12))
-                            }
-
-                            // Minimal crisp status badge on the active wallpaper
-                            Rectangle {
-                                visible: cardSlot.isApplied && cardSlot.focusWeight > 0.6
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 10
-                                height: 20
-                                implicitWidth: activeChipText.implicitWidth + 12
-                                radius: 5
-                                color: root.colAccent
-                                opacity: cardSlot.focusWeight
-
-                                Text {
-                                    id: activeChipText
-                                    anchors.centerIn: parent
-                                    text: "AKTIF"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    font.letterSpacing: 0.5
-                                    color: root.colAccentOnFill
-                                }
+                                color: Qt.rgba(0.05, 0.06, 0.08, (1.0 - cardSlot.focusWeight) * (cardMouse.containsMouse ? 0.16 : 0.38))
                             }
 
                             // Loading / Error States
@@ -576,7 +556,7 @@ PanelWindow {
                                     Layout.fillWidth: true
                                     horizontalAlignment: Text.AlignHCenter
                                     elide: Text.ElideRight
-                                    text: thumbImg.status === Image.Error ? "Gagal memuat" : "Memuat..."
+                                    text: thumbImg.status === Image.Error ? "Failed to load" : "Loading..."
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: root.colMuted
@@ -592,17 +572,20 @@ PanelWindow {
                             onPressed: mouse => {
                                 root.dragStartX = mouse.x + cardSlot.x;
                                 root.dragStartIndex = root.selectedIndex;
+                                root.dragStartAnim = root.animTarget;
                             }
                             onPositionChanged: mouse => {
                                 if (!pressed) return;
                                 const curX = mouse.x + cardSlot.x;
                                 const dx = curX - root.dragStartX;
                                 if (Math.abs(dx) > 26) {
-                                    const stepDelta = -Math.round(dx / (root.innerSliceWidth + root.sliceGap));
-                                    const targetIdx = Math.max(0, Math.min(root.totalCount - 1, root.dragStartIndex + stepDelta));
-                                    if (targetIdx !== root.selectedIndex) {
+                                    const stepDelta = -Math.round(dx / 130);
+                                    const nextAnim = root.isCircular
+                                        ? (root.dragStartAnim + stepDelta)
+                                        : Math.max(0, Math.min(root.totalCount - 1, root.dragStartIndex + stepDelta));
+                                    if (nextAnim !== root.animTarget) {
                                         root.userNavigated = true;
-                                        root.scrollToIndex(targetIdx, false);
+                                        root.scrollToAnimTarget(nextAnim, false);
                                     }
                                 }
                             }
@@ -614,7 +597,7 @@ PanelWindow {
                                 if (cardSlot.isCentered) {
                                     root.applySelected();
                                 } else {
-                                    root.scrollToIndex(cardSlot.index, false);
+                                    root.stepBy(root.shortestDelta(root.selectedIndex, cardSlot.index));
                                 }
                             }
                         }
@@ -652,11 +635,11 @@ PanelWindow {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 24
-            text: "Klik / Enter untuk pasang · Esc untuk tutup"
+            text: "Click / Enter to apply · Esc to close"
             font.family: Theme.fontFamily
             font.pixelSize: 11
             font.weight: Font.Medium
-            color: Qt.alpha(root.colText, 0.40)
+            color: Qt.rgba(0.95, 0.96, 0.97, 0.78)
             opacity: root.openProgress
             visible: root.totalCount > 0
         }

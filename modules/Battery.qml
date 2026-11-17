@@ -37,7 +37,7 @@ Item {
     readonly property color profileColor: {
         if (PowerService.activeProfile === "performance") return Theme.secondary;
         if (PowerService.activeProfile === "power-saver") return Theme.success;
-        return Theme.primary;
+        return Theme.accentInk;
     }
 
     RowLayout {

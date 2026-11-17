@@ -35,9 +35,10 @@ local subtext   = soraColor("subtext", "8e95a5")
 hl.config({
     general = {
         layout                  = "dwindle",
-        gaps_in                 = 6,
-        gaps_out                = 12,
-        border_size             = 2,
+        gaps_workspaces         = 8,
+        gaps_in                 = 4,
+        gaps_out                = { top = 4, right = 14, bottom = 14, left = 14 },
+        border_size             = 0,
         resize_on_border        = true,
         extend_border_grab_area = 0,
         hover_icon_on_border    = true,
@@ -95,6 +96,10 @@ hl.config({
 
 hl.window_rule({ match = { fullscreen = false }, opacity = "0.96 override 0.88 override" })
 
+-- Override single-window workspace gaps (from rules.lua) so single windows sit flush inside Sora's frame & bar
+hl.workspace_rule({ workspace = "w[tv1]s[false]", gaps_out = { top = 4, right = 14, bottom = 14, left = 14 } })
+hl.workspace_rule({ workspace = "f[1]s[false]", gaps_out = { top = 4, right = 14, bottom = 14, left = 14 } })
+
 -- Silky-smooth curves (critically damped, zero jitter)
 hl.curve("silkOut",    { type = "bezier", points = { {0.16, 1.0}, {0.3, 1.0} } })
 hl.curve("linearFade", { type = "bezier", points = { {0.0, 0.0},  {1.0, 1.0} } })
@@ -114,7 +119,7 @@ hl.animation({ leaf = "borderangle", enabled = false, speed = 1,   bezier = "lin
 hl.layer_rule({ match = { namespace = "sora-launcher" }, blur = false, no_anim = true })
 hl.layer_rule({ match = { namespace = "sora-wallpaper-picker" }, blur = false, no_anim = true })
 hl.layer_rule({ match = { namespace = "sora-(bar|dashboard|osd|brightness-osd|powermenu|notifications|center-popover|battery-popover|tray-popover|dock|contextmenu|widget-manager)" }, blur = true, ignore_alpha = 0.2, no_anim = true })
-hl.layer_rule({ match = { namespace = "sora-background" }, no_anim = true })
+hl.layer_rule({ match = { namespace = "sora-(background|screen-border)" }, no_anim = true })
 
 -- Super key and Super+Space shortcuts for Sora Start Menu (Windows style)
 hl.unbind("SUPER + SUPER_L")
@@ -136,9 +141,9 @@ hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("quickshell ipc -c sora call sora
 hl.unbind("SUPER + SHIFT + E")
 hl.bind("SUPER + SHIFT + E",   hl.dsp.exec_cmd("quickshell ipc -c sora call sora togglePowerMenu"))
 
--- Lock Screen (Native Hyprlock - Anti-Slop Architectural Lockscreen)
+-- Lock Screen (Sora Native Session Lock with hyprlock fallback)
 hl.unbind("SUPER + L")
-hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
+hl.bind("SUPER + L", hl.dsp.exec_cmd("sh -c 'quickshell ipc -c sora call sora lock >/dev/null 2>&1 || hyprlock'"))
 
 -- Kanji Workspace Toggle
 hl.unbind("SUPER + SHIFT + K")
@@ -148,13 +153,13 @@ hl.bind("SUPER + SHIFT + K", hl.dsp.exec_cmd("quickshell ipc -c sora call sora t
 hl.unbind("SUPER + SHIFT + W")
 hl.bind("SUPER + SHIFT + W", hl.dsp.exec_cmd("quickshell ipc -c sora call sora toggleWallpaperPicker"))
 
--- Brightness (Memicu Brightness OSD Sora via IPC dengan fallback brightnessctl)
+-- Brightness (Triggers Sora Brightness OSD via IPC with brightnessctl fallback)
 hl.unbind("XF86MonBrightnessUp")
 hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("sh -c 'quickshell ipc -c sora call sora brightnessUp >/dev/null 2>&1 || brightnessctl -n set 5%+'"), { locked = true, repeating = true })
 hl.unbind("XF86MonBrightnessDown")
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("sh -c 'quickshell ipc -c sora call sora brightnessDown >/dev/null 2>&1 || brightnessctl -n set 5%-'"), { locked = true, repeating = true })
 
--- Media Control (Tersinkron dengan modul Media Sora)
+-- Media Control (Synced with Sora Media module)
 hl.unbind("XF86AudioPlay")
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.unbind("XF86AudioPause")
@@ -164,7 +169,7 @@ hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = tr
 hl.unbind("XF86AudioPrev")
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
 
--- Bottom Dock Toggle (Default ada, auto-hide saat fullscreen, manual toggle SUPER+B)
+-- Bottom Dock Toggle (Visible by default, auto-hide on fullscreen, manual toggle SUPER+B)
 hl.unbind("SUPER + B")
 hl.bind("SUPER + B", hl.dsp.exec_cmd("quickshell ipc -c sora call sora toggleDock"))
 
@@ -172,9 +177,9 @@ hl.bind("SUPER + B", hl.dsp.exec_cmd("quickshell ipc -c sora call sora toggleDoc
 hl.unbind("SUPER + H")
 hl.bind("SUPER + H", hl.dsp.exec_cmd(home .. "/.config/quickshell/sora/scripts/toggle_minimize.sh"))
 
--- Emergency Process Killer (Anti-Lag shortcut seketika)
+-- Emergency Process Killer (Instant anti-lag shortcut)
 hl.bind("SUPER + Escape", hl.dsp.exec_cmd("hyprctl kill"))
-hl.bind("SUPER + SHIFT + Escape", hl.dsp.exec_cmd("sh -c 'pid=$(hyprctl activewindow -j | jq -r .pid); if [ -n \"$pid\" ] && [ \"$pid\" != \"null\" ]; then kill -9 $pid && notify-send -u critical \"Sora Emergency Kill\" \"Proses aktif PID $pid dipaksa mati\"; fi'"))
+hl.bind("SUPER + SHIFT + Escape", hl.dsp.exec_cmd("sh -c 'pid=$(hyprctl activewindow -j | jq -r .pid); if [ -n \"$pid\" ] && [ \"$pid\" != \"null\" ]; then kill -9 $pid && notify-send -u critical \"Sora Emergency Kill\" \"Force killed active process PID $pid\"; fi'"))
 
 -- Restart Sora Shell
 hl.unbind("CTRL + SUPER + ALT + R")

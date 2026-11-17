@@ -64,18 +64,18 @@ PanelWindow {
     }
 
     implicitWidth: Math.max(220, dockRow.implicitWidth + 60)
-    implicitHeight: root.contextMenuApp !== null ? 250 : 78
+    implicitHeight: (root.contextMenuApp !== null ? 250 : 78) + Math.max(0, Config.screenBorderSize)
     color: "transparent"
 
     mask: Region {
         x: root.contextMenuApp !== null
             ? 0
             : (root.dockExpanded ? Math.max(0, Math.round((root.width - dockCardContainer.width) * 0.5)) : Math.round((root.width - 50) * 0.5))
-        y: root.contextMenuApp !== null ? 0 : (root.dockExpanded ? (root.height - 46) : (root.height - 14))
+        y: root.contextMenuApp !== null ? 0 : (root.dockExpanded ? (root.height - 46 - Config.screenBorderSize) : (root.height - 14 - Config.screenBorderSize))
         width: root.contextMenuApp !== null
             ? root.width
             : (root.dockExpanded ? dockCardContainer.width : 50)
-        height: root.contextMenuApp !== null ? root.height : (root.dockExpanded ? 46 : 14)
+        height: root.contextMenuApp !== null ? root.height : (root.dockExpanded ? (46 + Config.screenBorderSize) : (14 + Config.screenBorderSize))
     }
 
     function normalizeAppKey(rawClass: string): string {
@@ -515,6 +515,13 @@ PanelWindow {
             z: 100
         }
 
+        // Clip dock notch, slide animation, and shadow strictly inside ScreenBorder bottom edge
+        Item {
+            id: dockScreenClip
+            anchors.fill: parent
+            anchors.bottomMargin: Math.max(0, Config.screenBorderSize)
+            clip: true
+
         // --------------------------------------------------------------------
         // 1. MINIMALIST IDLE NOTCH (Architectural Line, Zero Bubble/Pill)
         // --------------------------------------------------------------------
@@ -556,7 +563,7 @@ PanelWindow {
             id: dockCardContainer
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: 3
+            anchors.bottomMargin: 4
             width: dockRow.implicitWidth + 16
             height: 38
             visible: root.openProgress > 0.001
@@ -616,11 +623,11 @@ PanelWindow {
                         implicitWidth: 28
                         implicitHeight: 32
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Buka Daftar Aplikasi"
+                        Accessible.name: "Open App Launcher"
 
                         DockTooltip {
                             shown: launchMouseArea.containsMouse && root.contextMenuApp === null
-                            tipText: Config.dockPinned ? "Daftar Aplikasi · Klik kanan lepas pin" : "Daftar Aplikasi · Klik kanan pin dock"
+                            tipText: Config.dockPinned ? "App Launcher · Right-click to unpin" : "App Launcher · Right-click to pin dock"
                         }
 
                         Rectangle {
@@ -739,7 +746,7 @@ PanelWindow {
                     width: parent.width - 10
                     spacing: 2
 
-                    // Option 1: Buka Jendela Baru
+                    // Option 1: Open New Window
                     Rectangle {
                         width: parent.width
                         height: 24
@@ -760,7 +767,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: "Jendela Baru"
+                                text: "New Window"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 color: Theme.text
@@ -782,7 +789,7 @@ PanelWindow {
                         }
                     }
 
-                    // Option 2: Minimalkan / Pulihkan (Hanya jika aplikasi sedang berjalan)
+                    // Option 2: Minimize / Restore (Only if app is running)
                     Rectangle {
                         visible: root.contextMenuApp?.isRunning ?? false
                         width: parent.width
@@ -804,7 +811,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: root.contextMenuApp?.isMinimized ? "Pulihkan Layar" : "Minimalkan"
+                                text: root.contextMenuApp?.isMinimized ? "Restore Window" : "Minimize"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 color: Theme.text
@@ -863,7 +870,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: optFloatBtn.isFloating ? "Kunci ke Ubin (Tile)" : "Mode Mengambang"
+                                text: optFloatBtn.isFloating ? "Snap to Tile" : "Float Window"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 color: Theme.text
@@ -968,7 +975,7 @@ PanelWindow {
                         color: Theme.outline
                     }
 
-                    // Option 3: Tutup Jendela (Safety Exit)
+                    // Option 3: Close Window (Safety Exit)
                     Rectangle {
                         visible: root.contextMenuApp?.isRunning ?? false
                         width: parent.width
@@ -994,7 +1001,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: "Tutup Jendela"
+                                text: "Close Window"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 color: optCloseMouse.pressed ? (Theme.isDarkMode ? "#171A1C" : "#F8FAFA") : Theme.urgentInk
@@ -1017,6 +1024,7 @@ PanelWindow {
                     }
                 }
             }
+        }
         }
     }
 }

@@ -18,8 +18,8 @@ Item {
     readonly property bool hasPlayer: player !== null
     readonly property bool isPlaying: player?.playbackState === MprisPlaybackState.Playing
     readonly property bool isSpotify: (player?.identity ?? "").toLowerCase().includes("spotify")
-    readonly property string trackTitle: (player?.trackTitle && player.trackTitle.length > 0) ? player.trackTitle : "Tidak ada media aktif"
-    readonly property string trackArtist: (player?.trackArtist && player.trackArtist.length > 0) ? player.trackArtist : "Putar lagu untuk kontrol & lirik"
+    readonly property string trackTitle: (player?.trackTitle && player.trackTitle.length > 0) ? player.trackTitle : "No active media"
+    readonly property string trackArtist: (player?.trackArtist && player.trackArtist.length > 0) ? player.trackArtist : "Play a track for controls & lyrics"
     readonly property string artUrl: player?.trackArtUrl ?? ""
     property real pos: player?.position ?? 0
     readonly property real len: Math.max(1, player?.length ?? 1)
@@ -87,7 +87,7 @@ Item {
                 border.color: artTile.activeFocus ? tray.colAccentOnTray : tray.colTrayBorder
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
-                Accessible.name: "Buka Lirik & Pemutar Media"
+                Accessible.name: "Open Lyrics & Media Player"
 
                 Rectangle {
                     id: artMask
@@ -212,7 +212,7 @@ Item {
                             clip: true
                             activeFocusOnTab: root.hasPlayer && !!root.player?.canSeek
                             Accessible.role: Accessible.Slider
-                            Accessible.name: "Posisi Lagu"
+                            Accessible.name: "Track Position"
 
                             Rectangle {
                                 visible: waveScrubber.activeFocus
@@ -309,7 +309,7 @@ Item {
                         Layout.fillHeight: true
                         activeFocusOnTab: root.hasPlayer && !!root.player?.canTogglePlaying
                         Accessible.role: Accessible.Button
-                        Accessible.name: root.isPlaying ? "Jeda Media" : "Putar Media"
+                        Accessible.name: root.isPlaying ? "Pause Media" : "Play Media"
 
                         Rectangle {
                             anchors.fill: parent
@@ -372,7 +372,7 @@ Item {
                             Layout.fillHeight: true
                             activeFocusOnTab: root.hasPlayer && !!root.player?.canGoPrevious
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Lagu Sebelumnya"
+                            Accessible.name: "Previous Track"
 
                             MatIcon {
                                 anchors.centerIn: parent
@@ -410,7 +410,7 @@ Item {
                             Layout.fillHeight: true
                             activeFocusOnTab: root.hasPlayer && !!root.player?.canGoNext
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Lagu Berikutnya"
+                            Accessible.name: "Next Track"
 
                             MatIcon {
                                 anchors.centerIn: parent

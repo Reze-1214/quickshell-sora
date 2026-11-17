@@ -81,19 +81,23 @@ Pill {
         icon: Config.workspaceHoverInfo.length > 0 ? "crop_free" : (root.rawTitle.length > 0 ? "window" : "grid_view")
         size: 14
         fill: 0.0
-        color: (Config.workspaceHoverInfo.length > 0 || root.rawTitle.length > 0) ? Theme.primary : Theme.subtext
+        color: (Config.workspaceHoverInfo.length > 0 || root.rawTitle.length > 0) ? Theme.accentInk : Theme.subtext
         Layout.alignment: Qt.AlignVCenter
     }
 
-    readonly property bool showActionButtons: Config.workspaceHoverInfo.length === 0 && root.rawTitle.length > 0
+    HoverHandler {
+        id: pillHover
+    }
+
+    readonly property bool showActionButtons: Config.workspaceHoverInfo.length === 0 && root.rawTitle.length > 0 && pillHover.hovered
 
     readonly property int maxTitleWidth: {
         const screenW = root.Window.window?.width ?? 1366;
-        let baseMax = 145;
+        let baseMax = 200;
         if (screenW >= 2560) baseMax = Config.workspaceHoverInfo.length > 0 ? 300 : 250;
-        else if (screenW >= 1920) baseMax = Config.workspaceHoverInfo.length > 0 ? 250 : 200;
-        else if (screenW >= 1600) baseMax = Config.workspaceHoverInfo.length > 0 ? 210 : 170;
-        else baseMax = Config.workspaceHoverInfo.length > 0 ? 190 : 145;
+        else if (screenW >= 1920) baseMax = Config.workspaceHoverInfo.length > 0 ? 250 : 220;
+        else if (screenW >= 1600) baseMax = Config.workspaceHoverInfo.length > 0 ? 210 : 200;
+        else baseMax = Config.workspaceHoverInfo.length > 0 ? 210 : 200;
 
         const buttonReserve = root.showActionButtons ? (22 + 4 + 22 + root.spacing) : 0;
         const barCap = root.maxAvailableWidth - (root.paddingH * 2) - 15 - root.spacing - buttonReserve;
@@ -138,7 +142,7 @@ Pill {
             border.color: Theme.outlineStrong
             border.pixelAligned: true
             Accessible.role: Accessible.Button
-            Accessible.name: root.isFloating ? "Ubah jendela ke mode tiling" : "Ubah jendela ke mode floating"
+            Accessible.name: root.isFloating ? "Switch window to tiling mode" : "Switch window to floating mode"
 
             Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
@@ -167,7 +171,7 @@ Pill {
             }
         }
 
-        // Tombol Tutup Jendela (Shift+Klik kanan untuk force kill -9)
+        // Close Window Button (Shift+Right-Click to force kill -9)
         Rectangle {
             id: killBtn
             implicitWidth: 22
@@ -181,7 +185,7 @@ Pill {
             border.color: Theme.urgentInk
             border.pixelAligned: true
             Accessible.role: Accessible.Button
-            Accessible.name: "Tutup jendela aktif"
+            Accessible.name: "Close active window"
 
             Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
@@ -204,10 +208,10 @@ Pill {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: mouse => {
                     const pid = root.activeClient?.lastIpcObject?.pid;
-                    const app = root.appClass || "aplikasi";
+                    const app = root.appClass || "app";
                     if (mouse.button === Qt.RightButton && (mouse.modifiers & Qt.ShiftModifier)) {
                         if (pid) {
-                            Quickshell.execDetached(["sh", "-c", `kill -9 ${pid} && notify-send -u critical "Sora Force Kill" "Paksa mematikan ${app} (PID: ${pid})."`]);
+                            Quickshell.execDetached(["sh", "-c", `kill -9 ${pid} && notify-send -u critical "Sora Force Kill" "Force killed ${app} (PID: ${pid})."`]);
                         } else {
                             Hyprland.dispatch("hl.dsp.window.close()");
                         }

@@ -32,7 +32,7 @@ PanelWindow {
     readonly property string currentUser: Quickshell.env("USER") || "user"
 
     readonly property var powerActions: [
-        { label: "Lock", icon: "lock", danger: false, confirm: false, cmd: ["hyprlock"] },
+        { label: "Lock", icon: "lock", danger: false, confirm: false, action: "lock" },
         { label: "Suspend", icon: "bedtime", danger: false, confirm: false, cmd: ["systemctl", "suspend"] },
         { label: "Logout", icon: "logout", danger: false, confirm: true, luaDispatch: "hl.dsp.exit()" },
         { label: "Restart", icon: "restart_alt", danger: false, confirm: true, cmd: ["systemctl", "reboot"] },
@@ -71,20 +71,23 @@ PanelWindow {
         }
         pendingActionLabel = "";
         Config.powerMenuOpen = false;
-        if (action.luaDispatch) Hyprland.dispatch(action.luaDispatch);
+        if (action.action === "lock") Config.lockScreen();
+        else if (action.luaDispatch) Hyprland.dispatch(action.luaDispatch);
         else Quickshell.execDetached(action.cmd);
     }
 
-    // Dim backdrop
+    // Dim backdrop inset cleanly inside ScreenBorder frame
+    MouseArea {
+        anchors.fill: parent
+        enabled: Config.powerMenuOpen
+        onClicked: Config.powerMenuOpen = false
+    }
+
     Rectangle {
         anchors.fill: parent
+        anchors.margins: Math.max(0, Config.screenBorderSize)
+        radius: Config.screenBorderRadius
         color: Qt.alpha(Theme.background, 0.64 * root.openProgress)
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: Config.powerMenuOpen
-            onClicked: Config.powerMenuOpen = false
-        }
     }
 
     Item {
@@ -96,12 +99,13 @@ PanelWindow {
         scale: 0.94 + (0.06 * root.openProgress)
 
         RectangularShadow {
+            visible: !Theme.isDarkMode
             anchors.fill: capsuleCard
             radius: capsuleCard.radius
             blur: 26
             spread: 0.0
             offset.y: 10
-            color: Qt.alpha("#000000", Theme.isDarkMode ? 0.46 : 0.14)
+            color: Qt.alpha("#000000", 0.14)
         }
 
         // Main Caelestia-style Expressive Capsule
@@ -161,8 +165,8 @@ PanelWindow {
                             id: hintText
                             anchors.centerIn: parent
                             text: root.pendingActionLabel !== ""
-                                ? ("Klik / Enter lagi: " + root.pendingActionLabel)
-                                : "Esc batal"
+                                ? ("Click / Enter again: " + root.pendingActionLabel)
+                                : "Esc to cancel"
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Font.DemiBold

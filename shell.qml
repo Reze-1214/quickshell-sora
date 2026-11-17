@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import "config"
 import "components"
 import "services"
@@ -86,6 +87,10 @@ ShellRoot {
 
         function togglePowerMenu(): void {
             Config.togglePowerMenu();
+        }
+
+        function lock(): void {
+            Config.lockScreen();
         }
 
         function toggleMediaPopover(): void {
@@ -198,6 +203,11 @@ ShellRoot {
                 screen: screenScope.modelData
             }
 
+            // Mode-Aware Screen Perimeter Frame (per monitor)
+            ScreenBorder {
+                screen: screenScope.modelData
+            }
+
             // Persistent Architectural Bar (per monitor)
             Bar {
                 screen: screenScope.modelData
@@ -214,7 +224,11 @@ ShellRoot {
                 sourceComponent: Scope {
                     id: overlayScope
 
-                    property bool dashLoaded: Config.dashboardOpen
+                    property bool dashLoaded: true
+                    property bool rightEdgeHot: false
+                    property bool bottomEdgeHot: false
+                    onRightEdgeHotChanged: Config.dashboardEdgeHovered = rightEdgeHot || bottomEdgeHot
+                    onBottomEdgeHotChanged: Config.dashboardEdgeHovered = rightEdgeHot || bottomEdgeHot
                     property bool launcherLoaded: Config.launcherOpen
                     property bool powerMenuLoaded: Config.powerMenuOpen
                     property bool widgetMgrLoaded: Config.widgetManagerOpen
@@ -225,28 +239,35 @@ ShellRoot {
 
                     Connections {
                         target: Config
-                        function onDashboardOpenChanged() { if (Config.dashboardOpen) overlayScope.dashLoaded = true; else unloadTimer.restart(); }
+                        function onDashboardOpenChanged() { if (Config.dashboardOpen) { overlayScope.dashLoaded = true; drawerUnloadTimer.stop(); } else drawerUnloadTimer.restart(); }
                         function onLauncherOpenChanged() { if (Config.launcherOpen) overlayScope.launcherLoaded = true; else unloadTimer.restart(); }
                         function onPowerMenuOpenChanged() { if (Config.powerMenuOpen) overlayScope.powerMenuLoaded = true; else unloadTimer.restart(); }
                         function onWidgetManagerOpenChanged() { if (Config.widgetManagerOpen) overlayScope.widgetMgrLoaded = true; else unloadTimer.restart(); }
                         function onWallpaperPickerOpenChanged() { if (Config.wallpaperPickerOpen) overlayScope.wallPickerLoaded = true; else unloadTimer.restart(); }
-                        function onCenterPopoverOpenChanged() { if (Config.centerPopoverOpen) overlayScope.centerLoaded = true; else unloadTimer.restart(); }
+                        function onCenterPopoverOpenChanged() { if (Config.centerPopoverOpen) { overlayScope.centerLoaded = true; drawerUnloadTimer.stop(); } else drawerUnloadTimer.restart(); }
                         function onBatteryPopoverOpenChanged() { if (Config.batteryPopoverOpen) overlayScope.batteryLoaded = true; else unloadTimer.restart(); }
                         function onTrayPopoverOpenChanged() { if (Config.trayPopoverOpen) overlayScope.trayLoaded = true; else unloadTimer.restart(); }
                     }
 
                     Timer {
                         id: unloadTimer
-                        interval: 2000
+                        interval: 2500
                         onTriggered: {
-                            if (!Config.dashboardOpen) overlayScope.dashLoaded = false;
                             if (!Config.launcherOpen) overlayScope.launcherLoaded = false;
                             if (!Config.powerMenuOpen) overlayScope.powerMenuLoaded = false;
                             if (!Config.widgetManagerOpen) overlayScope.widgetMgrLoaded = false;
                             if (!Config.wallpaperPickerOpen) overlayScope.wallPickerLoaded = false;
-                            if (!Config.centerPopoverOpen) overlayScope.centerLoaded = false;
                             if (!Config.batteryPopoverOpen) overlayScope.batteryLoaded = false;
                             if (!Config.trayPopoverOpen) overlayScope.trayLoaded = false;
+                        }
+                    }
+
+                    // Keep frequently-hovered drawers warm to avoid re-compiling QML on quick re-hover
+                    Timer {
+                        id: drawerUnloadTimer
+                        interval: 60000
+                        onTriggered: {
+                            if (!Config.centerPopoverOpen) overlayScope.centerLoaded = false;
                         }
                     }
 
@@ -256,6 +277,83 @@ ShellRoot {
                     BrightnessOSD {
                         screen: screenScope.modelData
                     }
+                    // Right-screen hot-edge trigger to open Dashboard when cursor moves to right edge
+                    PanelWindow {
+                        id: dashEdgeTrigger
+                        screen: screenScope.modelData
+
+                        WlrLayershell.namespace: "sora-dashboard-edge"
+                        WlrLayershell.layer: WlrLayer.Overlay
+                        WlrLayershell.exclusionMode: ExclusionMode.Ignore
+                        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+                        anchors {
+                            top: true
+                            bottom: true
+                            right: true
+                        }
+
+                        margins {
+                            top: Math.max(0, Config.screenBorderSize + Config.screenBorderRadius)
+                            bottom: Math.max(0, Config.screenBorderSize + Config.screenBorderRadius)
+                        }
+
+                        implicitWidth: Math.max(8, Config.screenBorderSize + 2)
+                        color: "transparent"
+                        visible: !Config.lockScreenOpen && !Config.isCurrentFullscreen && !Config.launcherOpen && !Config.powerMenuOpen && !Config.wallpaperPickerOpen
+
+                        onVisibleChanged: {
+                            if (!visible) overlayScope.rightEdgeHot = false;
+                        }
+                        Component.onDestruction: overlayScope.rightEdgeHot = false
+
+                        Item {
+                            anchors.fill: parent
+
+                            HoverHandler {
+                                onHoveredChanged: overlayScope.rightEdgeHot = hovered
+                            }
+                        }
+                    }
+
+                    // Bottom-right hot-edge trigger to open Dashboard when cursor moves to bottom-right edge
+                    PanelWindow {
+                        id: dashBottomEdgeTrigger
+                        screen: screenScope.modelData
+
+                        WlrLayershell.namespace: "sora-dashboard-bottom-edge"
+                        WlrLayershell.layer: WlrLayer.Overlay
+                        WlrLayershell.exclusionMode: ExclusionMode.Ignore
+                        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+                        anchors {
+                            bottom: true
+                            right: true
+                        }
+
+                        margins {
+                            right: Math.max(0, Config.screenBorderSize)
+                        }
+
+                        implicitWidth: 418
+                        implicitHeight: Math.max(8, Config.screenBorderSize + 2)
+                        color: "transparent"
+                        visible: !Config.lockScreenOpen && !Config.isCurrentFullscreen && !Config.launcherOpen && !Config.powerMenuOpen && !Config.wallpaperPickerOpen
+
+                        onVisibleChanged: {
+                            if (!visible) overlayScope.bottomEdgeHot = false;
+                        }
+                        Component.onDestruction: overlayScope.bottomEdgeHot = false
+
+                        Item {
+                            anchors.fill: parent
+
+                            HoverHandler {
+                                onHoveredChanged: overlayScope.bottomEdgeHot = hovered
+                            }
+                        }
+                    }
+
                     Loader {
                         active: overlayScope.dashLoaded || Config.dashboardOpen
                         sourceComponent: Dashboard { screen: screenScope.modelData }
@@ -300,4 +398,7 @@ ShellRoot {
     Notifications {
         id: notifDaemon
     }
+
+    // Native Wayland Session Lock Screen (keep WlSessionLock alive so unlock_and_destroy flushes cleanly)
+    LockScreen {}
 }

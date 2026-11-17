@@ -39,10 +39,10 @@ Item {
     readonly property bool isSpotify: playerIdentity.toLowerCase().includes("spotify")
     readonly property string rawTitle: player?.trackTitle ?? ""
     readonly property bool hasActiveTrack: player !== null && rawTitle.trim().length > 0
-    readonly property string trackTitle: hasActiveTrack ? rawTitle : "Tidak ada lagu"
+    readonly property string trackTitle: hasActiveTrack ? rawTitle : "No active track"
     readonly property string trackArtist: (player?.trackArtist && player.trackArtist.length > 0)
         ? player.trackArtist
-        : (hasActiveTrack ? "Artis tidak diketahui" : "Putar musik di Spotify atau pemutar media")
+        : (hasActiveTrack ? "Unknown artist" : "Play music in Spotify or a media player")
     readonly property string trackAlbum: player?.trackAlbum ?? ""
     readonly property bool showAlbumLine: hasActiveTrack
         && trackAlbum.length > 0
@@ -465,6 +465,18 @@ Item {
                 radius: 10
                 color: Theme.surface
 
+                RectangularShadow {
+                    visible: !Theme.isDarkMode
+                    anchors.fill: parent
+                    radius: parent.radius
+                    blur: 12
+                    spread: 0.0
+                    offset.x: 0
+                    offset.y: 2
+                    color: Qt.alpha("#000000", 0.10)
+                    z: -1
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.topMargin: 10
@@ -514,6 +526,8 @@ Item {
                                 id: albumArt
                                 anchors.fill: parent
                                 source: root.artUrl
+                                sourceSize.width: 320
+                                sourceSize.height: 320
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 smooth: true
@@ -599,7 +613,7 @@ Item {
                             border.width: activeFocus ? 1.5 : 0
                             border.color: Theme.accentInk
                             Accessible.role: Accessible.Button
-                            Accessible.name: canTrigger ? `Buka jendela ${root.isSpotify ? "Spotify" : root.playerIdentity}` : "Sumber media"
+                            Accessible.name: canTrigger ? `Focus ${root.isSpotify ? "Spotify" : root.playerIdentity} window` : "Media source"
 
                             HoverHandler { id: raiseHover }
 
@@ -614,6 +628,8 @@ Item {
                                     Layout.preferredWidth: 14
                                     Layout.preferredHeight: 14
                                     source: `${Quickshell.env("HOME")}/.config/quickshell/sora/assets/spotify.svg`
+                                    sourceSize.width: 32
+                                    sourceSize.height: 32
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true
                                     mipmap: true
@@ -629,8 +645,8 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: root.player
-                                        ? (root.isSpotify ? "Spotify" : (root.playerIdentity.length > 0 ? root.playerIdentity : "Pemutar Media"))
-                                        : "Tidak ada pemutar"
+                                        ? (root.isSpotify ? "Spotify" : (root.playerIdentity.length > 0 ? root.playerIdentity : "Media Player"))
+                                        : "No player"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.DemiBold
@@ -679,7 +695,7 @@ Item {
                             border.width: activeFocus ? 1.5 : 0
                             border.color: Theme.accentInk
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Ganti pemutar media"
+                            Accessible.name: "Switch media player"
 
                             HoverHandler { id: switchHover }
 
@@ -737,6 +753,18 @@ Item {
                     radius: 10
                     color: Theme.surface
 
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: parent
+                        radius: parent.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.10)
+                        z: -1
+                    }
+
                     // Card Header
                     Item {
                         id: lyricsHeader
@@ -753,7 +781,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignVCenter
-                                text: root.hasActiveTrack ? "Lirik" : "Pemutar Media"
+                                text: root.hasActiveTrack ? "Lyrics" : "Media Player"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 font.weight: Font.Bold
@@ -763,7 +791,7 @@ Item {
                             Text {
                                 visible: root.lyricsFound && root.isSyncedLyrics
                                 Layout.alignment: Qt.AlignVCenter
-                                text: "Tersinkron"
+                                text: "Synced"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold
@@ -791,7 +819,7 @@ Item {
                                 icon: "refresh"
                                 iconSize: 14
                                 btnEnabled: root.hasActiveTrack && !root.lyricsLoading
-                                accessName: "Muat ulang lirik"
+                                accessName: "Reload lyrics"
                                 onTriggered: root.checkAndFetchLyrics(true)
                             }
                         }
@@ -832,7 +860,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: "Tidak ada pemutar aktif"
+                                text: "No active player"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 font.weight: Font.DemiBold
@@ -841,7 +869,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: "Putar lagu untuk menampilkan lirik dan kontrol pemutaran"
+                                text: "Play a track to display lyrics and playback controls"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 color: Theme.subtext
@@ -863,7 +891,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: "Mencari lirik..."
+                                text: "Searching lyrics..."
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 font.weight: Font.Medium
@@ -886,7 +914,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: "Lirik gagal dimuat"
+                                text: "Failed to load lyrics"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
@@ -904,14 +932,14 @@ Item {
                                 border.width: activeFocus ? 1.5 : 0
                                 border.color: Theme.accentInk
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Muat ulang lirik"
+                                Accessible.name: "Reload lyrics"
 
                                 HoverHandler { id: retryHover }
 
                                 Text {
                                     id: retryText
                                     anchors.centerIn: parent
-                                    text: "Muat ulang"
+                                    text: "Retry"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.DemiBold
@@ -944,7 +972,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: "Lirik belum tersedia atau instrumental"
+                                text: "Lyrics unavailable or instrumental"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 font.weight: Font.Medium
@@ -1081,6 +1109,18 @@ Item {
                     radius: 10
                     color: Theme.surface
 
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: parent
+                        radius: parent.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.10)
+                        z: -1
+                    }
+
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 14
@@ -1119,7 +1159,7 @@ Item {
                                 opacity: seekable ? 1.0 : 0.45
 
                                 Accessible.role: Accessible.Slider
-                                Accessible.name: "Posisi pemutaran lagu"
+                                Accessible.name: "Playback position"
 
                                 HoverHandler { id: scrubHover }
 
@@ -1264,7 +1304,7 @@ Item {
                                     opacity: AudioService.ready ? 1.0 : 0.4
 
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: AudioService.muted ? "Bunyikan suara" : "Bisukan suara"
+                                    Accessible.name: AudioService.muted ? "Unmute audio" : "Mute audio"
 
                                     HoverHandler { id: muteHover }
 
@@ -1313,7 +1353,7 @@ Item {
                                     activeFocusOnTab: AudioService.ready && Config.mediaPopoverOpen
 
                                     Accessible.role: Accessible.Slider
-                                    Accessible.name: `Volume ${Math.round(AudioService.volume * 100)} persen`
+                                    Accessible.name: `Volume ${Math.round(AudioService.volume * 100)} percent`
 
                                     Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                                     Behavior on opacity { NumberAnimation { duration: 140 } }
@@ -1388,10 +1428,10 @@ Item {
                                     }
                                 }
 
-                                // 3. Volume text indicator (Percentage / Mati)
+                                // 3. Volume text indicator (Percentage / Muted)
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: AudioService.muted ? "Mati" : `${Math.round(AudioService.volume * 100)}%`
+                                    text: AudioService.muted ? "Muted" : `${Math.round(AudioService.volume * 100)}%`
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
@@ -1413,7 +1453,7 @@ Item {
                                     icon: "shuffle"
                                     active: root.shuffleActive
                                     btnEnabled: root.player !== null && root.player.shuffleSupported
-                                    accessName: root.shuffleActive ? "Matikan acak" : "Aktifkan acak"
+                                    accessName: root.shuffleActive ? "Disable shuffle" : "Enable shuffle"
                                     onTriggered: {
                                         if (root.player?.shuffleSupported) root.player.shuffle = !root.player.shuffle;
                                     }
@@ -1426,7 +1466,7 @@ Item {
                                     iconSize: 18
                                     icon: "skip_previous"
                                     btnEnabled: root.player?.canGoPrevious ?? false
-                                    accessName: "Lagu sebelumnya"
+                                    accessName: "Previous track"
                                     onTriggered: if (root.player?.canGoPrevious) root.player.previous()
                                 }
 
@@ -1439,7 +1479,7 @@ Item {
                                     focal: true
                                     icon: root.isPlaying ? "pause" : "play_arrow"
                                     btnEnabled: root.player?.canTogglePlaying ?? false
-                                    accessName: root.isPlaying ? "Jeda pemutaran" : "Putar lagu"
+                                    accessName: root.isPlaying ? "Pause playback" : "Play track"
                                     onTriggered: if (root.player?.canTogglePlaying) root.player.togglePlaying()
                                 }
 
@@ -1450,7 +1490,7 @@ Item {
                                     iconSize: 18
                                     icon: "skip_next"
                                     btnEnabled: root.player?.canGoNext ?? false
-                                    accessName: "Lagu berikutnya"
+                                    accessName: "Next track"
                                     onTriggered: if (root.player?.canGoNext) root.player.next()
                                 }
 
@@ -1462,8 +1502,8 @@ Item {
                                     active: root.repeatActive
                                     btnEnabled: root.player !== null && root.player.loopSupported
                                     accessName: root.loopMode === MprisLoopState.None
-                                        ? "Aktifkan ulang daftar"
-                                        : (root.loopMode === MprisLoopState.Playlist ? "Ulangi satu lagu" : "Matikan ulang")
+                                        ? "Enable playlist repeat"
+                                        : (root.loopMode === MprisLoopState.Playlist ? "Repeat single track" : "Disable repeat")
                                     onTriggered: root.cycleLoopState()
                                 }
                             }
@@ -1480,7 +1520,7 @@ Item {
                                     iconSize: 16
                                     icon: "replay_10"
                                     btnEnabled: root.player !== null && root.player.canSeek && root.hasActiveTrack
-                                    accessName: "Mundur 10 detik"
+                                    accessName: "Seek backward 10 seconds"
                                     onTriggered: root.seekBy(-10)
                                 }
 
@@ -1490,7 +1530,7 @@ Item {
                                     iconSize: 16
                                     icon: "forward_10"
                                     btnEnabled: root.player !== null && root.player.canSeek && root.hasActiveTrack
-                                    accessName: "Maju 10 detik"
+                                    accessName: "Seek forward 10 seconds"
                                     onTriggered: root.seekBy(10)
                                 }
                             }

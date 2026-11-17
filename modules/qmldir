@@ -26,5 +26,7 @@ DesktopWidgets 1.0 DesktopWidgets.qml
 DesktopContextMenu 1.0 DesktopContextMenu.qml
 WidgetManager 1.0 WidgetManager.qml
 WallpaperPicker 1.0 WallpaperPicker.qml
+LockScreen 1.0 LockScreen.qml
+ScreenBorder 1.0 ScreenBorder.qml
 
 

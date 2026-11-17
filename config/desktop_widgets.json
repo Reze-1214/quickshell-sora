@@ -1,36 +1,36 @@
 {
   "positions": {
     "sunPhase": {
-      "x": 10,
-      "y": 568
+      "x": 497,
+      "y": 658
     },
     "bauhausDial": {
       "x": 1076,
       "y": 652
     },
     "netTelemetry": {
-      "x": 1078,
-      "y": 554
+      "x": 1220,
+      "y": 560
     },
     "pulseHealth": {
-      "x": 1220,
-      "y": 555
-    },
-    "mediaWave": {
-      "x": 10,
-      "y": 674
-    },
-    "quickOps": {
-      "x": 795,
-      "y": 682
+      "x": 1078,
+      "y": 558
     },
     "photoFrame": {
       "x": 1220,
-      "y": 410
+      "y": 416
+    },
+    "mediaWave": {
+      "x": 788,
+      "y": 674
+    },
+    "quickOps": {
+      "x": 786,
+      "y": 591
     }
   },
   "visibility": {
-    "showDesktopWidgets": true,
+    "showDesktopWidgets": false,
     "showWidgetSunPhase": true,
     "showWidgetMediaWave": true,
     "showWidgetBauhausDial": true,

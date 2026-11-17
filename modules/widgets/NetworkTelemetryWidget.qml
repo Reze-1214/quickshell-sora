@@ -20,7 +20,7 @@ Item {
             anchors.fill: parent
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
-            Accessible.name: "Buka Detail Trafik Jaringan"
+            Accessible.name: "Open Network Traffic Details"
 
             ColumnLayout {
                 anchors.fill: parent
@@ -60,7 +60,7 @@ Item {
                             spacing: 0
 
                             Text {
-                                text: Network.isConnected ? "UNDUH" : "OFFLINE"
+                                text: Network.isConnected ? "DOWN" : "OFFLINE"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 9
                                 font.weight: Font.Bold
@@ -87,7 +87,7 @@ Item {
 
                             Text {
                                 Layout.alignment: Qt.AlignRight
-                                text: "UNGGAH"
+                                text: "UP"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 9
                                 font.weight: Font.Medium

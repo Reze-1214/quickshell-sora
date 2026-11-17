@@ -21,7 +21,7 @@ Item {
     readonly property real len: Math.max(1, player?.length ?? 1)
     readonly property real progressRatio: Math.max(0.0, Math.min(1.0, len > 1 ? (pos / len) : 0.0))
 
-    // 6-Second Alternating Display ("selang-seling 6 detik")
+    // 6-Second Alternating Display
     property bool showBarcode: false
 
     function updatePopoverPos(): void {

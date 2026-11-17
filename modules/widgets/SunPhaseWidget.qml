@@ -5,7 +5,7 @@ import Quickshell.Io
 import "../../config"
 import "../../components"
 
-// Agenda Kalender & Notifikasi (Pattern 1: Left Hero Accent Date Slab + Right Stacked Tray)
+// Calendar Agenda & Notifications (Pattern 1: Left Hero Accent Date Slab + Right Stacked Tray)
 Item {
     id: root
 
@@ -54,9 +54,9 @@ Item {
 
         return {
             hasToday: hasToday,
-            todayNote: hasToday ? (todayNote.length > 0 ? todayNote : "Tanggal ditandai") : "",
+            todayNote: hasToday ? (todayNote.length > 0 ? todayNote : "Marked date") : "",
             nextKey: nextKey,
-            nextNote: nextKey.length > 0 ? (nextNote.length > 0 ? nextNote : "Tanggal ditandai") : "",
+            nextNote: nextKey.length > 0 ? (nextNote.length > 0 ? nextNote : "Marked date") : "",
             upcomingCount: upcoming.length
         };
     }
@@ -152,7 +152,7 @@ Item {
                 color: tray.colAccent
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
-                Accessible.name: "Buka Kalender"
+                Accessible.name: "Open Calendar"
 
                 Rectangle {
                     anchors.fill: parent
@@ -211,7 +211,7 @@ Item {
                             Layout.fillWidth: true
                             text: root.agendaSummary.upcomingCount > 0
                                 ? `${root.agendaSummary.upcomingCount} agenda`
-                                : "Kalender"
+                                : "Calendar"
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Font.DemiBold
@@ -259,7 +259,7 @@ Item {
                     border.color: agendaTile.activeFocus ? tray.colAccentOnTray : tray.colTrayBorder
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Ringkasan Agenda Kalender"
+                    Accessible.name: "Calendar Agenda Summary"
 
                     RowLayout {
                         anchors.fill: parent
@@ -277,14 +277,14 @@ Item {
                             Text {
                                 Layout.fillWidth: true
                                 text: {
-                                    if (agendaTile.hasError) return "Format kalender gagal dibaca";
+                                    if (agendaTile.hasError) return "Failed to parse calendar";
                                     if (agendaTile.hasToday) {
                                         return root.agendaSummary.nextKey.length > 0
-                                            ? `Hari ini · lanjut ${root.formatShortKey(root.agendaSummary.nextKey)}`
-                                            : "Agenda hari ini";
+                                            ? `Today · next ${root.formatShortKey(root.agendaSummary.nextKey)}`
+                                            : "Today's agenda";
                                     }
                                     if (agendaTile.hasNext) {
-                                        return `Berikutnya · ${root.formatShortKey(root.agendaSummary.nextKey)}`;
+                                        return `Upcoming · ${root.formatShortKey(root.agendaSummary.nextKey)}`;
                                     }
                                     return "Agenda";
                                 }
@@ -301,15 +301,15 @@ Item {
                             Text {
                                 Layout.fillWidth: true
                                 text: {
-                                    if (agendaTile.isLoading) return "Memuat agenda...";
+                                    if (agendaTile.isLoading) return "Loading agenda...";
                                     if (agendaTile.hasError) {
                                         return (root.eventsError && root.marksError)
-                                            ? "Periksa file kalender di config/"
-                                            : (root.marksError ? "Periksa config/calendar_marks.json" : "Periksa config/calendar_events.json");
+                                            ? "Check calendar files in config/"
+                                            : (root.marksError ? "Check config/calendar_marks.json" : "Check config/calendar_events.json");
                                     }
                                     if (agendaTile.hasToday) return root.agendaSummary.todayNote;
                                     if (agendaTile.hasNext) return root.agendaSummary.nextNote;
-                                    return "Belum ada agenda, klik untuk tambah";
+                                    return "No agenda yet, click to add";
                                 }
                                 font.family: Theme.fontFamily
                                 font.pixelSize: (agendaTile.hasToday || agendaTile.hasNext) ? 12 : 10
@@ -356,7 +356,7 @@ Item {
                         border.color: notifTile.activeFocus ? tray.colAccentOnTray : tray.colTrayBorder
                         activeFocusOnTab: true
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Buka Riwayat Notifikasi"
+                        Accessible.name: "Open Notification History"
 
                         RowLayout {
                             anchors.fill: parent
@@ -375,7 +375,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: notifTile.count > 0
                                     ? `${notifTile.count} · ${Config.notifHistory[0].summary}`
-                                    : "Tanpa notifikasi"
+                                    : "No notifications"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 9
                                 font.weight: notifTile.count > 0 ? Font.DemiBold : Font.Normal

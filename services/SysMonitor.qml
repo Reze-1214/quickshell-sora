@@ -59,7 +59,7 @@ Singleton {
     property int gpuMaxMhz: 1100
     readonly property string gpuStatus: gpuPercent >= 75 ? "BOOST" : (gpuPercent >= 35 ? "ACTIVE" : "GOOD")
 
-    // 5. Jaringan (Network)
+    // 5. Network
     property string netDownText: "0.0 KB/s"
     property string netUpText: "0.0 KB/s"
     property int netPercent: 0
@@ -108,13 +108,13 @@ Singleton {
 
     // True when any UI surface is actively displaying telemetry data
     readonly property bool hasActiveConsumer: Config.perfPopoverOpen
-        || (Config.activeCenterPage === 2 && (Config.centerPopoverOpen || Config.centerBarHovered))
+        || Config.activeCenterPage === 2
         || (Config.showDesktopWidgets && (Config.showWidgetBauhausDial || Config.showWidgetNetTelemetry || Config.showWidgetPulseHealth))
 
     Timer {
         id: pollTimer
-        interval: Config.perfPopoverOpen ? 1800 : (root.hasActiveConsumer ? 4500 : 18000)
-        running: true
+        interval: Config.perfPopoverOpen ? 1800 : 4000
+        running: root.hasActiveConsumer
         repeat: true
         onTriggered: root.refresh()
     }
@@ -178,21 +178,27 @@ Singleton {
         id: probeProc
         command: [
             "sh", "-c",
-            "awk '/^cpu / {t=$2+$3+$4+$5+$6+$7+$8+$9; i=$5+$6; printf \"%s|%s|\", t, i}' /proc/stat; " +
-            "printf '%s|' \"$(cat /sys/class/thermal/thermal_zone7/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 50000)\"; " +
-            "awk '/^MemTotal:/ {t=$2} /^MemAvailable:/ {a=$2} /^Buffers:/ {b=$2} /^Cached:/ {c=$2} END {printf \"%s|%s|%s|\", t, a, b+c}' /proc/meminfo; " +
-            "df -B1 / | awk 'NR==2 {printf \"%s|%s|\", $2, $3}'; " +
-            "awk 'NR>2 && $1 !~ /^(lo|docker|veth|br-|virbr)/ {rx+=$2; tx+=$10} END {printf \"%s|%s|\", rx+0, tx+0}' /proc/net/dev; " +
-            "printf '%s|' \"$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 2400000)\"; " +
-            "printf '%s|%s|' \"$(cat /sys/class/drm/card1/gt_act_freq_mhz 2>/dev/null || cat /sys/class/drm/card0/gt_act_freq_mhz 2>/dev/null || echo 300)\" \"$(cat /sys/class/drm/card1/gt_max_freq_mhz 2>/dev/null || cat /sys/class/drm/card0/gt_max_freq_mhz 2>/dev/null || echo 1100)\"; " +
-            "printf '%s|%s|%s|%s|' " +
-            "\"$(cat /sys/class/drm/card0/device/power/runtime_status 2>/dev/null || cat /sys/class/drm/card1/device/power/runtime_status 2>/dev/null || echo active)\" " +
-            "\"$(cat /sys/class/drm/card0/device/hwmon/hwmon*/temp1_input 2>/dev/null || cat /sys/class/drm/card1/device/hwmon/hwmon*/temp1_input 2>/dev/null || echo 0)\" " +
-            "\"$(cat /sys/class/drm/card0/device/mem_info_vram_used 2>/dev/null || echo 0)\" " +
-            "\"$(cat /sys/class/drm/card0/device/gpu_busy_percent 2>/dev/null || cat /sys/class/drm/card1/device/gpu_busy_percent 2>/dev/null || echo -1)\"; " +
-            "printf '%s|' \"$(cat /sys/class/hwmon/hwmon*/fan1_input 2>/dev/null | head -n1 || echo 0)\"; " +
-            "awk '/zram0/ {u=$4; s=$3} END {printf \"%s|%s|\", u+0, s+0}' /proc/swaps; " +
-            "awk '/^cpu[0-9]+/ {ct=$2+$3+$4+$5+$6+$7+$8+$9; ci=$5+$6; cores=(cores ? cores \",\" : \"\") ct \":\" ci} END {printf \"%s\\n\", cores}' /proc/stat"
+            "r(){ [ -r \"$1\" ] && read -r v < \"$1\" 2>/dev/null && printf '%s' \"$v\" || printf '%s' \"$2\"; }; " +
+            "t=$(r /sys/class/thermal/thermal_zone7/temp ''); [ -z \"$t\" ] && t=$(r /sys/class/thermal/thermal_zone0/temp 50000); " +
+            "cf=$(r /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2400000); " +
+            "ga=$(r /sys/class/drm/card1/gt_act_freq_mhz ''); [ -z \"$ga\" ] && ga=$(r /sys/class/drm/card0/gt_act_freq_mhz 300); " +
+            "gm=$(r /sys/class/drm/card1/gt_max_freq_mhz ''); [ -z \"$gm\" ] && gm=$(r /sys/class/drm/card0/gt_max_freq_mhz 1100); " +
+            "ds=$(r /sys/class/drm/card0/device/power/runtime_status ''); [ -z \"$ds\" ] && ds=$(r /sys/class/drm/card1/device/power/runtime_status active); " +
+            "dt=''; for f in /sys/class/drm/card0/device/hwmon/hwmon*/temp1_input /sys/class/drm/card1/device/hwmon/hwmon*/temp1_input; do [ -r \"$f\" ] && { read -r dt < \"$f\" 2>/dev/null; break; }; done; [ -z \"$dt\" ] && dt=0; " +
+            "dv=$(r /sys/class/drm/card0/device/mem_info_vram_used 0); " +
+            "db=$(r /sys/class/drm/card0/device/gpu_busy_percent ''); [ -z \"$db\" ] && db=$(r /sys/class/drm/card1/device/gpu_busy_percent -1); " +
+            "fan=''; for f in /sys/class/hwmon/hwmon*/fan1_input; do [ -r \"$f\" ] && { read -r fan < \"$f\" 2>/dev/null; break; }; done; [ -z \"$fan\" ] && fan=0; " +
+            "df_line=$(df -B1 / | awk 'NR==2 {print $2 \"|\" $3}'); " +
+            "awk -v t=\"$t\" -v df=\"$df_line\" -v cf=\"$cf\" -v ga=\"$ga\" -v gm=\"$gm\" -v ds=\"$ds\" -v dt=\"$dt\" -v dv=\"$dv\" -v db=\"$db\" -v fan=\"$fan\" '" +
+            "ARGIND==1 && /^cpu / {ct=$2+$3+$4+$5+$6+$7+$8+$9; ci=$5+$6} " +
+            "ARGIND==1 && /^cpu[0-9]+/ {c=$2+$3+$4+$5+$6+$7+$8+$9; i=$5+$6; cores=(cores?cores \",\":\"\") c \":\" i} " +
+            "ARGIND==2 && /^MemTotal:/ {mt=$2} " +
+            "ARGIND==2 && /^MemAvailable:/ {ma=$2} " +
+            "ARGIND==2 && /^Buffers:/ {mb=$2} " +
+            "ARGIND==2 && /^Cached:/ {mc=$2} " +
+            "ARGIND==3 && FNR>2 && $1 !~ /^(lo|docker|veth|br-|virbr)/ {rx+=$2; tx+=$10} " +
+            "ARGIND==4 && /zram0/ {zu=$4+0; zs=$3+0} " +
+            "END { printf \"%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\\n\", ct, ci, t, mt, ma, mb+mc, df, rx+0, tx+0, cf, ga, gm, ds, dt, dv, db, fan, zu+0, zs+0, cores }' /proc/stat /proc/meminfo /proc/net/dev /proc/swaps"
         ]
         running: false
         stdout: SplitParser {
@@ -253,7 +259,7 @@ Singleton {
                 root.ssdTotalGb = Math.round(ssdTotB / 1073741824.0).toString();
                 root.ssdFreeGb = Math.round(ssdFreeB / 1073741824.0).toString();
 
-                // 5. Network (Jaringan)
+                // 5. Network
                 const netRx = parseFloat(p[8]) || 0;
                 const netTx = parseFloat(p[9]) || 0;
                 if (root.prevNetRx > 0 && netRx >= root.prevNetRx) {

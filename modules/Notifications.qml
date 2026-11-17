@@ -87,7 +87,7 @@ Scope {
     function computeCritical(summary: string, rawNotif: var): bool {
         return rawNotif?.urgency === NotificationUrgency.Critical
             || rawNotif?.urgency === 2
-            || (!!summary && (summary.includes("Kalender") || summary.includes("Pengingat")));
+            || (!!summary && (summary.includes("Calendar") || summary.includes("Reminder") || summary.includes("Kalender") || summary.includes("Pengingat")));
     }
 
     function resolveArtwork(rawNotif: var, appName: string, summary: string, critical: bool): var {
@@ -162,7 +162,7 @@ Scope {
         }
 
         const sumSameAsApp = rawSum.length === 0 || (sourceLabel.length > 0 && rawSum.toLowerCase() === sourceLabel.toLowerCase());
-        const headline = sumSameAsApp ? (rawBody.length > 0 ? rawBody : (sourceLabel || "Notifikasi")) : rawSum;
+        const headline = sumSameAsApp ? (rawBody.length > 0 ? rawBody : (sourceLabel || "Notification")) : rawSum;
         const cleanBody = (sumSameAsApp || rawBody.toLowerCase() === headline.toLowerCase()) ? "" : rawBody;
         const showSource = sourceLabel.length > 0 && sourceLabel.toLowerCase() !== headline.toLowerCase();
 
@@ -183,7 +183,7 @@ Scope {
         const art = resolveArtwork(rawNotif, rawApp, rawSum, critical);
         return {
             sourceLabel: showSource ? sourceLabel : "",
-            summaryText: headline || "Notifikasi",
+            summaryText: headline || "Notification",
             bodyText: formattedBody,
             bodyHasMarkup: hasMarkup,
             isCritical: critical,
@@ -204,13 +204,16 @@ Scope {
 
     function showPopup(appName: string, summary: string, body: string, rawNotif: var): void {
         const critical = computeCritical(summary, rawNotif);
-        Config.addNotifToHistory(appName, summary, body, critical);
+        const desktopId = (rawNotif?.desktopEntry ?? "").trim();
+        Config.addNotifToHistory(appName, summary, body, critical, desktopId);
         if (Config.dndEnabled || Config.dashboardOpen) return;
 
         const norm = normalizeFields(appName, summary, body, rawNotif);
         const entry = {
             uid: root._nextUid++,
             rawNotif: rawNotif ?? null,
+            rawAppName: (appName || "").trim(),
+            desktopEntry: desktopId,
             closedByServer: false,
             sourceLabel: norm.sourceLabel,
             summaryText: norm.summaryText,
@@ -556,7 +559,7 @@ Scope {
                 Behavior on border.color { ColorAnimation { duration: 130 } }
 
                 Accessible.role: Accessible.Pane
-                Accessible.name: `${sourceLabel ? sourceLabel + ": " : ""}${summaryText}${canRunPrimary ? " (klik untuk buka)" : ""}`
+                Accessible.name: `${sourceLabel ? sourceLabel + ": " : ""}${summaryText}${canRunPrimary ? " (click to open)" : ""}`
 
                 MouseArea {
                     id: cardClickArea
@@ -566,8 +569,16 @@ Scope {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: mouse => {
                         if (root.activeClosing || !root.activeEntry) return;
-                        if (mouse.button === Qt.LeftButton && root.parsedActions.primary) {
-                            root.parsedActions.primary.invoke();
+                        if (mouse.button === Qt.LeftButton) {
+                            if (root.parsedActions.primary) {
+                                root.parsedActions.primary.invoke();
+                            } else {
+                                Config.focusNotificationTarget(
+                                    root.activeEntry.rawAppName || root.activeEntry.sourceLabel || "",
+                                    root.activeEntry.desktopEntry || "",
+                                    root.activeEntry.summaryText || ""
+                                );
+                            }
                             if (!root.activeEntry?.rawNotif?.resident) {
                                 root.closeActive(false);
                             }
@@ -691,7 +702,7 @@ Scope {
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold
                                 font.features: Theme.tabularFeatures
-                                color: Theme.primary
+                                color: Theme.accentInk
                             }
                         }
 
@@ -797,7 +808,7 @@ Scope {
                     Behavior on color { ColorAnimation { duration: 110 } }
 
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Tutup notifikasi"
+                    Accessible.name: "Dismiss notification"
 
                     MatIcon {
                         anchors.centerIn: parent
@@ -855,7 +866,7 @@ Scope {
                     Behavior on scale { NumberAnimation { duration: 90 } }
 
                     Accessible.role: Accessible.Button
-                    Accessible.name: `Hapus ${root.totalRemainingCount} notifikasi`
+                    Accessible.name: `Clear ${root.totalRemainingCount} notifications`
 
                     Row {
                         id: clearRow
@@ -871,7 +882,7 @@ Scope {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: `Hapus ${root.totalRemainingCount}`
+                            text: `Clear ${root.totalRemainingCount}`
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Font.Medium

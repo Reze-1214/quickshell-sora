@@ -44,23 +44,28 @@ PanelWindow {
     readonly property real posX: Math.max(12, Math.min(root.width - menuWidth - 12, Config.contextMenuX))
     readonly property real posY: Math.max(minTopY, Math.min(root.height - menuHeight - 14, Config.contextMenuY))
 
+    function pinnedCmd(titleKey: string, fallbackCmd: string): string {
+        const match = (Config.dockPinnedApps ?? []).find(a => (a?.title ?? "").toLowerCase() === titleKey.toLowerCase());
+        return (match && match.cmd && match.cmd.length > 0) ? match.cmd : fallbackCmd;
+    }
+
     function triggerByIndex(idx: int): void {
         if (idx < 0 || idx >= itemCount) return;
         switch (idx) {
         case 0:
             Config.closeDesktopContextMenu();
-            Quickshell.execDetached(["foot"]);
+            Quickshell.execDetached([root.pinnedCmd("Terminal", "foot")]);
             break;
         case 1:
             Config.closeDesktopContextMenu();
             {
-                const filesApp = (Config.dockPinnedApps ?? []).find(a => a.title === "Files")?.cmd;
+                const filesApp = root.pinnedCmd("Files", "");
                 Quickshell.execDetached(filesApp ? [filesApp] : ["xdg-open", Quickshell.env("HOME")]);
             }
             break;
         case 2:
             Config.closeDesktopContextMenu();
-            Quickshell.execDetached(["firefox"]);
+            Quickshell.execDetached([root.pinnedCmd("Browser", "firefox")]);
             break;
         case 3:
             Config.toggleWallpaperPicker();
@@ -83,7 +88,7 @@ PanelWindow {
             break;
         case 8:
             Config.closeDesktopContextMenu();
-            Quickshell.execDetached(["hyprlock"]);
+            Config.lockScreen();
             break;
         case 9:
             Config.togglePowerMenu();
@@ -188,12 +193,13 @@ PanelWindow {
     }
 
     RectangularShadow {
+        visible: !Theme.isDarkMode
         anchors.fill: menuCard
         radius: menuCard.radius
         blur: 16
         spread: 0.0
         offset.y: 5
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.40 : 0.12)
+        color: Qt.alpha("#000000", 0.12)
         opacity: root.openProgress
         z: menuCard.z - 1
     }
@@ -258,32 +264,32 @@ PanelWindow {
             MenuItem {
                 itemIndex: 3
                 icon: "wallpaper"
-                label: "Ganti Wallpaper"
+                label: "Change Wallpaper"
                 shortcut: "SUPER+SHIFT+W"
             }
 
             MenuItem {
                 itemIndex: 4
                 icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
-                label: Theme.isDarkMode ? "Mode Terang" : "Mode Gelap"
+                label: Theme.isDarkMode ? "Light Mode" : "Dark Mode"
             }
 
             MenuItem {
                 itemIndex: 5
                 icon: Config.showDesktopWidgets ? "visibility_off" : "visibility"
-                label: Config.showDesktopWidgets ? "Sembunyikan Widget" : "Tampilkan Widget"
+                label: Config.showDesktopWidgets ? "Hide Widgets" : "Show Widgets"
             }
 
             MenuItem {
                 itemIndex: 6
                 icon: Config.widgetEditMode ? "lock" : "open_with"
-                label: Config.widgetEditMode ? "Kunci Posisi Widget" : "Atur Posisi Widget"
+                label: Config.widgetEditMode ? "Lock Widget Positions" : "Edit Widget Positions"
             }
 
             MenuItem {
                 itemIndex: 7
                 icon: "widgets"
-                label: "Atur Widget..."
+                label: "Manage Widgets..."
             }
 
             MenuDivider {}
@@ -291,14 +297,14 @@ PanelWindow {
             MenuItem {
                 itemIndex: 8
                 icon: "lock"
-                label: "Kunci Layar"
+                label: "Lock Screen"
                 shortcut: "SUPER+L"
             }
 
             MenuItem {
                 itemIndex: 9
                 icon: "power_settings_new"
-                label: "Menu Daya"
+                label: "Power Menu"
                 shortcut: "SUPER+SHIFT+E"
                 destructive: true
             }

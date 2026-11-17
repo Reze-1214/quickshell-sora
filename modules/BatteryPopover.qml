@@ -32,7 +32,13 @@ PanelWindow {
 
     property real openProgress: Config.batteryPopoverOpen ? 1.0 : 0.0
     Behavior on openProgress {
-        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: Config.batteryPopoverOpen ? 380 : 160
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Config.batteryPopoverOpen
+                ? [0.38, 1.21, 0.22, 1.0, 1.0, 1.0]
+                : [0.3, 0.0, 0.8, 0.15, 1.0, 1.0]
+        }
     }
 
     visible: openProgress > 0.005
@@ -66,12 +72,13 @@ PanelWindow {
         clip: true
 
         RectangularShadow {
+            visible: !Theme.isDarkMode
             anchors.fill: popoverCard
             radius: popoverCard.radius
             blur: 16
             spread: 0
             offset.y: 5
-            color: Qt.alpha("#000000", Theme.isDarkMode ? 0.38 : 0.12)
+            color: Qt.alpha("#000000", 0.12)
             opacity: popoverCard.opacity
         }
 
@@ -84,8 +91,7 @@ PanelWindow {
             height: parent.height - 8
             radius: 18
             color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.95 : 0.98)
-            border.width: 1
-            border.color: Theme.outline
+            border.width: 0
             focus: Config.batteryPopoverOpen && Config.batteryPinned
             Keys.onEscapePressed: {
                 Config.batteryPinned = false;
@@ -147,7 +153,7 @@ PanelWindow {
                         }
 
                         Text {
-                            text: "Profil Daya · " + (root.isCharging ? "Mengisi" : (root.hasBattery ? "Baterai" : "Sumber AC"))
+                            text: "Power Profile · " + (root.isCharging ? "Charging" : (root.hasBattery ? "On Battery" : "AC Power"))
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Font.Medium
@@ -161,9 +167,9 @@ PanelWindow {
                 // 3 Caelestia Expressive Morphing Pills
                 Repeater {
                     model: [
-                        { id: "power-saver", label: "Hemat Daya", icon: "energy_savings_leaf", desc: "Senyap & hemat baterai" },
-                        { id: "balanced", label: "Seimbang", icon: "balance", desc: "Penggunaan standar harian" },
-                        { id: "performance", label: "Performa", icon: "speed", desc: "Daya CPU & sistem maksimal" }
+                        { id: "power-saver", label: "Power Saver", icon: "energy_savings_leaf", desc: "Quiet & battery efficient" },
+                        { id: "balanced", label: "Balanced", icon: "balance", desc: "Standard daily usage" },
+                        { id: "performance", label: "Performance", icon: "speed", desc: "Maximum CPU & system power" }
                     ]
 
                     Rectangle {

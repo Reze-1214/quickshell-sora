@@ -57,10 +57,8 @@ PanelWindow {
         }
     }
 
-    // Light scrim keeps desktop widget columns visible on both sides during live adjustments
-    color: Theme.isDarkMode
-        ? Qt.rgba(0.0, 0.0, 0.0, 0.22 * openProgress)
-        : Qt.alpha("#0F1417", 0.14 * openProgress)
+    // Light scrim inset cleanly inside ScreenBorder frame
+    color: "transparent"
     visible: openProgress > 0.01
 
     MouseArea {
@@ -68,13 +66,23 @@ PanelWindow {
         onClicked: Config.widgetManagerOpen = false
     }
 
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: Math.max(0, Config.screenBorderSize)
+        radius: Config.screenBorderRadius
+        color: Theme.isDarkMode
+            ? Qt.rgba(0.0, 0.0, 0.0, 0.22 * root.openProgress)
+            : Qt.alpha("#0F1417", 0.14 * root.openProgress)
+    }
+
     RectangularShadow {
+        visible: !Theme.isDarkMode
         anchors.fill: dialogCard
         radius: dialogCard.radius
         blur: 20
         spread: 0.0
         offset.y: 6
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.44 : 0.14)
+        color: Qt.alpha("#000000", 0.14)
         opacity: root.openProgress
         z: dialogCard.z - 1
     }
@@ -120,7 +128,7 @@ PanelWindow {
                     spacing: 8
 
                     Text {
-                        text: "Widget Desktop"
+                        text: "Desktop Widgets"
                         font.family: Theme.fontFamily
                         font.pixelSize: 14
                         font.weight: Font.DemiBold
@@ -129,7 +137,7 @@ PanelWindow {
                     }
 
                     Text {
-                        text: Config.showDesktopWidgets ? `${root.enabledWidgetCount}/7 aktif` : "Tersembunyi"
+                        text: Config.showDesktopWidgets ? `${root.enabledWidgetCount}/7 active` : "Hidden"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         font.features: Theme.tabularFeatures
@@ -149,7 +157,7 @@ PanelWindow {
                         border.color: Theme.accentInk
 
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Tutup Widget Desktop"
+                        Accessible.name: "Close Desktop Widgets"
 
                         MatIcon {
                             anchors.centerIn: parent
@@ -189,7 +197,7 @@ PanelWindow {
 
                     PresetDiagram {
                         presetKey: "right"
-                        label: "Kanan"
+                        label: "Right"
                         active: root.detectedPreset === "right"
                         onTriggered: {
                             Config.showDesktopWidgets = true;
@@ -209,7 +217,7 @@ PanelWindow {
 
                     PresetDiagram {
                         presetKey: "left"
-                        label: "Kiri"
+                        label: "Left"
                         active: root.detectedPreset === "left"
                         onTriggered: {
                             Config.showDesktopWidgets = true;
@@ -233,7 +241,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "calendar_month"
-                    title: "Agenda & Notifikasi"
+                    title: "Calendar & Notifications"
                     checked: Config.showWidgetSunPhase
                     onToggled: val => Config.showWidgetSunPhase = val
                 }
@@ -241,7 +249,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "graphic_eq"
-                    title: "Media & Pemutar"
+                    title: "Media & Player"
                     checked: Config.showWidgetMediaWave
                     onToggled: val => Config.showWidgetMediaWave = val
                 }
@@ -249,7 +257,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "speed"
-                    title: "CPU & Memori"
+                    title: "CPU & Memory"
                     checked: Config.showWidgetBauhausDial
                     onToggled: val => Config.showWidgetBauhausDial = val
                 }
@@ -257,7 +265,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "monitoring"
-                    title: "Trafik Jaringan"
+                    title: "Network Traffic"
                     checked: Config.showWidgetNetTelemetry
                     onToggled: val => Config.showWidgetNetTelemetry = val
                 }
@@ -265,7 +273,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "memory"
-                    title: "GPU & Penyimpanan"
+                    title: "GPU & Storage"
                     checked: Config.showWidgetPulseHealth
                     onToggled: val => Config.showWidgetPulseHealth = val
                 }
@@ -273,7 +281,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "tune"
-                    title: "Kontrol Cepat"
+                    title: "Quick Controls"
                     checked: Config.showWidgetQuickOps
                     onToggled: val => Config.showWidgetQuickOps = val
                 }
@@ -281,7 +289,7 @@ PanelWindow {
 
                 WidgetToggleRow {
                     icon: "image"
-                    title: "Bingkai Foto 1:1"
+                    title: "1:1 Photo Frame"
                     checked: Config.showWidgetPhotoFrame
                     onToggled: val => Config.showWidgetPhotoFrame = val
                 }
@@ -317,7 +325,7 @@ PanelWindow {
                         border.color: Theme.accentInk
 
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Reset posisi widget"
+                        Accessible.name: "Reset widget positions"
 
                         RowLayout {
                             id: resetRow
@@ -331,7 +339,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: "Reset posisi"
+                                text: "Reset layout"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 font.weight: Font.Medium
@@ -373,7 +381,7 @@ PanelWindow {
                         border.color: Theme.accentInk
 
                         Accessible.role: Accessible.CheckBox
-                        Accessible.name: Config.widgetEditMode ? "Kunci posisi widget" : "Atur posisi widget"
+                        Accessible.name: Config.widgetEditMode ? "Lock widget positions" : "Edit widget positions"
                         Accessible.checked: Config.widgetEditMode
 
                         function activate(): void {
@@ -396,7 +404,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: Config.widgetEditMode ? "Kunci" : "Atur posisi"
+                                text: Config.widgetEditMode ? "Lock" : "Edit layout"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 font.weight: Config.widgetEditMode ? Font.Bold : Font.Medium
@@ -426,11 +434,11 @@ PanelWindow {
                         activeFocusOnTab: Config.widgetManagerOpen
 
                         Accessible.role: Accessible.CheckBox
-                        Accessible.name: "Tampilkan widget di desktop"
+                        Accessible.name: "Show desktop widgets"
                         Accessible.checked: Config.showDesktopWidgets
 
                         Text {
-                            text: "Tampilkan"
+                            text: "Show"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                             font.weight: Font.Medium
@@ -476,7 +484,7 @@ PanelWindow {
         scale: diagArea.pressed ? 0.97 : 1.0
 
         Accessible.role: Accessible.Button
-        Accessible.name: `Tata letak ${label}`
+        Accessible.name: `${label} layout`
 
         Behavior on color { ColorAnimation { duration: 100; easing.type: Easing.OutCubic } }
         Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }

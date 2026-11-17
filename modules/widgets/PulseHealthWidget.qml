@@ -20,7 +20,7 @@ Item {
             anchors.fill: parent
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
-            Accessible.name: "Buka Detail GPU dan Penyimpanan"
+            Accessible.name: "Open GPU and Storage Details"
 
             ColumnLayout {
                 anchors.fill: parent

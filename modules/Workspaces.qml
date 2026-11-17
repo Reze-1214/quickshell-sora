@@ -17,8 +17,8 @@ Pill {
     readonly property int activeWsId: Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1
 
     readonly property int windowSize: 6
-    readonly property int slotWidth: 28
-    readonly property int slotHeight: 24
+    readonly property int slotWidth: Math.max(22, Config.pillHeight - 2)
+    readonly property int slotHeight: Math.min(24, Math.max(18, Config.pillHeight - 4))
     readonly property int itemSpacing: 3
 
     // Dynamic start of the 6-item sliding window
@@ -44,9 +44,12 @@ Pill {
 
     readonly property int maxWs: Math.max(6, root.activeWsId, root.highestOccupiedWs)
 
+    property var _iconCache: ({})
+
     function resolveIcon(appClass) {
         if (!appClass || appClass.length === 0) return "";
         const lower = appClass.toLowerCase();
+        if (root._iconCache[lower] !== undefined) return root._iconCache[lower];
         const nameMap = {
             "equibop": "discord",
             "vesktop": "discord",
@@ -84,8 +87,9 @@ Pill {
         };
         const resolved = nameMap[lower] ?? lower;
         const themed = Quickshell.iconPath(resolved, true) || Quickshell.iconPath(lower, true);
-        if (themed && themed.length > 0) return themed;
-        return Config.resolveIcon(resolved) || "";
+        const result = (themed && themed.length > 0) ? themed : (Config.resolveIcon(resolved) || "");
+        root._iconCache[lower] = result;
+        return result;
     }
 
     function getFallbackMatIcon(appClass) {
@@ -475,11 +479,11 @@ Pill {
                         onEntered: {
                             hoverClearTimer.stop();
                             if (wsBtn.hasApp) {
-                                const status = wsBtn.isMinimized ? " (Disembunyikan • Klik pulihkan)" : "";
+                                const status = wsBtn.isMinimized ? " (Minimized · Click to restore)" : "";
                                 Config.workspaceHoverInfo = `Workspace ${wsBtn.wsId} • ${wsBtn.info.title}${status}`;
                                 Config.workspaceHoverIcon = wsBtn.appIcon;
                             } else {
-                                Config.workspaceHoverInfo = `Workspace ${wsBtn.wsId} (Kosong)`;
+                                Config.workspaceHoverInfo = `Workspace ${wsBtn.wsId} (Empty)`;
                                 Config.workspaceHoverIcon = "";
                             }
                         }

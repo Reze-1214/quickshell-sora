@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -29,8 +30,17 @@ PanelWindow {
     property bool _animReady: false
     property real openProgress: (_settled && _animReady && Config.dashboardOpen) ? 1.0 : 0.0
     Behavior on openProgress {
-        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: Config.dashboardOpen ? 260 : 180
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Config.dashboardOpen
+                ? [0.16, 1.08, 0.30, 1.0, 1.0, 1.0]
+                : [0.4, 0.0, 0.85, 0.25, 1.0, 1.0]
+        }
     }
+
+    readonly property real clamped: Math.max(0.0, Math.min(1.0, openProgress))
+    readonly property int drawerTopY: Config.barMarginTop + Math.round((Config.barHeight - Config.pillHeight) * 0.5) + Config.pillHeight + 2
 
     color: "transparent"
     visible: Config.dashboardOpen || openProgress > 0.005
@@ -46,9 +56,8 @@ PanelWindow {
             if (!root.backingWindowVisible) return;
             waitFrames++;
             const nc = Config.notifHistory.length;
-            const notifsReady = nc === 0 || (notifList.itemAtIndex(0) !== null && (nc < 2 || notifList.itemAtIndex(1) !== null)) || waitFrames >= 6;
-            const mediaReady = (heroBannerImg.status !== Image.Loading && avatarImg.status !== Image.Loading) || waitFrames >= 24;
-            if (notifsReady && mediaReady) {
+            const notifsReady = nc === 0 || (notifList.itemAtIndex(0) !== null && (nc < 2 || notifList.itemAtIndex(1) !== null)) || waitFrames >= 2;
+            if (notifsReady) {
                 notifSection.syncCollapsedHeight();
                 root._animReady = true;
             }
@@ -56,8 +65,8 @@ PanelWindow {
     }
 
     mask: Region {
-        x: Config.dashboardPinned ? 0 : Math.max(0, Math.round(dashHoverZone.x))
-        y: Config.dashboardPinned ? 0 : Math.max(0, Math.round(dashHoverZone.y))
+        x: Config.dashboardPinned ? 0 : Math.max(0, Math.round(dashScreenClip.x + dashHoverZone.x))
+        y: Config.dashboardPinned ? 0 : Math.max(0, Math.round(dashScreenClip.y + dashHoverZone.y))
         width: Config.dashboardPinned ? root.width : Math.max(0, Math.round(dashHoverZone.width))
         height: Config.dashboardPinned ? root.height : Math.max(0, Math.round(dashHoverZone.height))
     }
@@ -154,79 +163,6 @@ PanelWindow {
         }
         Keys.onSpacePressed: event => {
             if (btnRoot.btnEnabled) { btnRoot.triggered(); event.accepted = true; }
-        }
-    }
-
-    component DashSwitch: Item {
-        id: swRoot
-        property bool checked: false
-        property bool busy: false
-        property color trackOn: root.colAccent
-        property color thumbOn: root.colAccentOnFill
-        property color trackOff: Qt.alpha(root.colText, Theme.isDarkMode ? 0.16 : 0.53)
-        property color thumbOff: Theme.isDarkMode ? "#E8EBEB" : "#FFFFFF"
-        property color focusColor: root.colAccentInk
-        property string accessName: "Toggle"
-        signal toggled()
-
-        implicitWidth: 40
-        implicitHeight: 28
-        activeFocusOnTab: !busy || activeFocus
-        opacity: busy ? 0.56 : 1.0
-        scale: swMouse.pressed && !busy ? 0.94 : 1.0
-        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-
-        Accessible.role: Accessible.CheckBox
-        Accessible.name: accessName
-        Accessible.checked: checked
-
-        Rectangle {
-            visible: swRoot.activeFocus
-            anchors.centerIn: parent
-            width: 34
-            height: 22
-            radius: 11
-            color: "transparent"
-            border.width: 1.5
-            border.color: swRoot.focusColor
-        }
-
-        Rectangle {
-            id: swTrack
-            anchors.centerIn: parent
-            width: 28
-            height: 16
-            radius: 8
-            color: swRoot.checked
-                ? swRoot.trackOn
-                : (swMouse.containsMouse ? Qt.alpha(root.colText, Theme.isDarkMode ? 0.25 : 0.64) : swRoot.trackOff)
-            Behavior on color { ColorAnimation { duration: 120; easing.type: Easing.OutCubic } }
-
-            Rectangle {
-                width: 12
-                height: 12
-                radius: 6
-                anchors.verticalCenter: parent.verticalCenter
-                x: swRoot.checked ? parent.width - width - 2 : 2
-                color: swRoot.checked ? swRoot.thumbOn : swRoot.thumbOff
-                Behavior on x { NumberAnimation { duration: 135; easing.type: Easing.OutCubic } }
-            }
-        }
-
-        MouseArea {
-            id: swMouse
-            anchors.fill: parent
-            enabled: !swRoot.busy
-            hoverEnabled: true
-            cursorShape: enabled ? Qt.PointingHandCursor : Qt.WaitCursor
-            onClicked: swRoot.toggled()
-        }
-
-        Keys.onReturnPressed: event => {
-            if (!swRoot.busy) { swRoot.toggled(); event.accepted = true; }
-        }
-        Keys.onSpacePressed: event => {
-            if (!swRoot.busy) { swRoot.toggled(); event.accepted = true; }
         }
     }
 
@@ -336,114 +272,6 @@ PanelWindow {
         }
     }
 
-    component ModeCell: Rectangle {
-        id: modeRoot
-        property string icon: ""
-        property string activeIcon: ""
-        property string label: ""
-        property bool checked: false
-        signal triggered()
-
-        activeFocusOnTab: true
-        Accessible.role: Accessible.CheckBox
-        Accessible.name: label
-        Accessible.checked: checked
-        color: modeMa.pressed
-            ? Qt.alpha(root.colText, 0.08)
-            : (modeMa.containsMouse ? Qt.alpha(root.colText, 0.04) : "transparent")
-        border.width: activeFocus ? 1 : 0
-        border.color: Qt.alpha(root.colAccentInk, 0.72)
-        Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
-
-        RowLayout {
-            anchors.centerIn: parent
-            width: Math.min(implicitWidth, parent.width - 12)
-            spacing: 6
-
-            MatIcon {
-                icon: modeRoot.checked && modeRoot.activeIcon.length > 0 ? modeRoot.activeIcon : modeRoot.icon
-                size: 15
-                fill: modeRoot.checked ? 1.0 : 0.0
-                color: modeRoot.checked ? root.colAccentInk : root.colSubtext
-            }
-
-            Text {
-                text: modeRoot.label
-                font.family: root.uiFont
-                font.pixelSize: 11
-                font.weight: modeRoot.checked ? Font.DemiBold : Font.Medium
-                color: modeRoot.checked ? root.colAccentInk : Qt.alpha(root.colText, 0.78)
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-        }
-
-        MouseArea {
-            id: modeMa
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: modeRoot.triggered()
-        }
-        Keys.onReturnPressed: event => { modeRoot.triggered(); event.accepted = true; }
-        Keys.onSpacePressed: event => { modeRoot.triggered(); event.accepted = true; }
-    }
-
-    component AudioSwitchButton: Rectangle {
-        id: swBtnRoot
-        property string label: ""
-        property string panelKey: ""
-        property bool muted: false
-        property string deviceName: ""
-        readonly property bool isOpen: Config.activeSubPanel === panelKey
-
-        Layout.preferredWidth: 66
-        implicitHeight: 24
-        radius: 5
-        activeFocusOnTab: true
-        Accessible.role: Accessible.Button
-        Accessible.name: `Switch ${label} (${deviceName})`
-        color: isOpen
-            ? Qt.alpha(root.colAccent, 0.14)
-            : (swBtnMa.containsMouse || activeFocus ? Qt.alpha(root.colText, 0.06) : "transparent")
-        border.width: activeFocus ? 1 : 0
-        border.color: Qt.alpha(root.colAccentInk, 0.72)
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 3
-            anchors.rightMargin: 2
-            spacing: 2
-
-            Text {
-                text: swBtnRoot.label
-                font.family: root.uiFont
-                font.pixelSize: 12
-                font.weight: Font.Medium
-                color: swBtnRoot.muted ? root.colSubtext : root.colText
-                Layout.fillWidth: true
-            }
-
-            MatIcon {
-                icon: "expand_more"
-                size: 14
-                rotation: swBtnRoot.isOpen ? 180 : 0
-                color: swBtnRoot.isOpen ? root.colAccentInk : root.colSubtext
-                Behavior on rotation { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-            }
-        }
-
-        MouseArea {
-            id: swBtnMa
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.toggleSubPanel(swBtnRoot.panelKey)
-        }
-        Keys.onReturnPressed: event => { root.toggleSubPanel(swBtnRoot.panelKey); event.accepted = true; }
-        Keys.onSpacePressed: event => { root.toggleSubPanel(swBtnRoot.panelKey); event.accepted = true; }
-    }
-
     component AudioDeviceDrawer: Rectangle {
         id: drawerRoot
         property bool open: false
@@ -453,29 +281,20 @@ PanelWindow {
         signal deviceSelected(var node)
 
         Layout.fillWidth: true
-        Layout.leftMargin: -16
-        Layout.rightMargin: -16
         visible: open
-        implicitHeight: open ? (drawerCol.implicitHeight + 16) : 0
+        implicitHeight: open ? (drawerCol.implicitHeight + 12) : 0
+        radius: 8
         color: root.colDrawerTint
         clip: true
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: 1
-            color: root.colHairline
-        }
 
         ColumnLayout {
             id: drawerCol
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.topMargin: 8
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            anchors.topMargin: 6
             spacing: 2
 
             Text {
@@ -503,9 +322,9 @@ PanelWindow {
                     activeFocusOnTab: drawerRoot.open || activeFocus
                     Accessible.role: Accessible.Button
                     Accessible.name: AudioService.nodeLabel(modelData)
-                    color: isCurrent
-                        ? Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.14 : 0.11)
-                        : (devMa.containsMouse || activeFocus ? Qt.alpha(root.colText, 0.06) : "transparent")
+                    color: (devMa.containsMouse || activeFocus)
+                        ? Qt.alpha(root.colText, 0.05)
+                        : "transparent"
                     border.width: activeFocus ? 1 : 0
                     border.color: Qt.alpha(root.colAccentInk, 0.72)
 
@@ -545,14 +364,569 @@ PanelWindow {
                 }
             }
         }
+    }
 
-        Rectangle {
+    // iOS Control Center 2x2 Connectivity & Focus Cell
+    component ControlClusterButton: Item {
+        id: ccBtn
+        property string icon: ""
+        property string activeIcon: ""
+        property string label: ""
+        property bool active: false
+        property bool busy: false
+        property bool hasDrawer: false
+        property bool drawerOpen: false
+        property string accessName: ""
+        property string drawerAccessName: ""
+        signal toggled()
+        signal expandTriggered()
+
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+
+        readonly property string resolvedIcon: (active && activeIcon.length > 0) ? activeIcon : icon
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            width: parent.width
+            spacing: 4
+
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                implicitWidth: 38
+                implicitHeight: 38
+
+                Rectangle {
+                    id: ccCircle
+                    anchors.fill: parent
+                    radius: 19
+                    activeFocusOnTab: !ccBtn.busy || activeFocus
+                    opacity: ccBtn.busy ? 0.58 : 1.0
+                    scale: ccCircleMa.pressed && !ccBtn.busy ? 0.92 : 1.0
+                    color: ccBtn.active
+                        ? (ccCircleMa.containsMouse ? Qt.lighter(root.colAccent, 1.06) : root.colAccent)
+                        : (ccCircleMa.containsMouse ? Qt.alpha(root.colText, Theme.isDarkMode ? 0.14 : 0.13) : root.colElevated)
+                    border.width: activeFocus ? 1.5 : 0
+                    border.color: ccBtn.active ? root.colText : root.colAccentInk
+                    Accessible.role: Accessible.CheckBox
+                    Accessible.name: ccBtn.accessName.length > 0 ? ccBtn.accessName : ccBtn.label
+                    Accessible.checked: ccBtn.active
+
+                    Behavior on scale { NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: 130; easing.type: Easing.OutCubic } }
+
+                    MatIcon {
+                        anchors.centerIn: parent
+                        icon: ccBtn.resolvedIcon
+                        size: 18
+                        fill: ccBtn.active ? 1.0 : 0.0
+                        color: ccBtn.active ? root.colAccentOnFill : root.colText
+                    }
+
+                    MouseArea {
+                        id: ccCircleMa
+                        anchors.fill: parent
+                        enabled: !ccBtn.busy
+                        hoverEnabled: true
+                        acceptedButtons: ccBtn.hasDrawer ? (Qt.LeftButton | Qt.RightButton) : Qt.LeftButton
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.WaitCursor
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton && ccBtn.hasDrawer) ccBtn.expandTriggered();
+                            else ccBtn.toggled();
+                        }
+                    }
+
+                    Keys.onReturnPressed: event => {
+                        if (!ccBtn.busy) { ccBtn.toggled(); event.accepted = true; }
+                    }
+                    Keys.onSpacePressed: event => {
+                        if (!ccBtn.busy) { ccBtn.toggled(); event.accepted = true; }
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                implicitHeight: 16
+
+                Item {
+                    id: ccExpandFocus
+                    anchors.fill: parent
+                    activeFocusOnTab: ccBtn.hasDrawer
+                    Accessible.role: Accessible.Button
+                    Accessible.name: ccBtn.drawerAccessName.length > 0 ? ccBtn.drawerAccessName : ccBtn.label
+
+                    Rectangle {
+                        visible: ccExpandFocus.activeFocus
+                        anchors.fill: parent
+                        radius: 5
+                        color: "transparent"
+                        border.width: 1
+                        border.color: root.colAccentInk
+                    }
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, parent.width - 4)
+                        spacing: 1
+
+                        Text {
+                            text: ccBtn.label
+                            font.family: root.uiFont
+                            font.pixelSize: 10
+                            font.weight: (ccBtn.active || ccBtn.drawerOpen) ? Font.DemiBold : Font.Medium
+                            color: ccBtn.drawerOpen
+                                ? root.colAccentInk
+                                : (ccBtn.active ? root.colText : root.colSubtext)
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: ccBtn.hasDrawer ? 60 : 76
+                        }
+
+                        MatIcon {
+                            visible: ccBtn.hasDrawer
+                            icon: "expand_more"
+                            size: 12
+                            rotation: ccBtn.drawerOpen ? 180 : 0
+                            color: ccBtn.drawerOpen ? root.colAccentInk : root.colSubtext
+                            Behavior on rotation { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+                        }
+                    }
+
+                    MouseArea {
+                        id: ccExpandMa
+                        anchors.fill: parent
+                        enabled: ccBtn.hasDrawer
+                        hoverEnabled: ccBtn.hasDrawer
+                        cursorShape: ccBtn.hasDrawer ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: if (ccBtn.hasDrawer) ccBtn.expandTriggered()
+                    }
+
+                    Keys.onReturnPressed: event => {
+                        if (ccBtn.hasDrawer) { ccBtn.expandTriggered(); event.accepted = true; }
+                    }
+                    Keys.onSpacePressed: event => {
+                        if (ccBtn.hasDrawer) { ccBtn.expandTriggered(); event.accepted = true; }
+                    }
+                }
+            }
+        }
+    }
+
+    // Thick iOS Control Center Pill Slider with dual-layer clipped contrast
+    component ControlPillSlider: Rectangle {
+        id: pillSl
+        property real value: 0.0
+        property real minValue: 0.0
+        property real maxValue: 1.0
+        property real stepSize: 0.05
+        property bool muted: false
+        property bool slEnabled: true
+        property bool iconClickable: false
+        property bool hasDrawer: false
+        property bool drawerOpen: false
+        property string icon: ""
+        property string label: ""
+        property string valueText: ""
+        property string accessName: "Slider"
+        property string iconAccessName: ""
+        property string drawerAccessName: ""
+        signal moved(real newValue)
+        signal stepped(real delta)
+        signal iconTriggered()
+        signal drawerTriggered()
+
+        readonly property real span: Math.max(0.0001, maxValue - minValue)
+        readonly property real ratio: muted ? 0.0 : Math.max(0.0, Math.min(1.0, (value - minValue) / span))
+        readonly property int leftZoneW: 32
+        readonly property int rightZoneW: hasDrawer ? 28 : 0
+
+        Layout.fillWidth: true
+        implicitWidth: 220
+        implicitHeight: 40
+        radius: 12
+        color: root.colSurface
+        clip: true
+        opacity: slEnabled ? 1.0 : 0.45
+
+        RectangularShadow {
+            visible: !Theme.isDarkMode
+            anchors.fill: parent
+            radius: parent.radius
+            blur: 10
+            spread: 0.0
+            offset.x: 0
+            offset.y: 2
+            color: Qt.alpha("#000000", 0.08)
+            z: -1
+        }
+
+        // Unfilled base label & icon layer (colText on colSurface)
+        Item {
+            anchors.fill: parent
+
+            MatIcon {
+                x: 10
+                anchors.verticalCenter: parent.verticalCenter
+                icon: pillSl.icon
+                size: 16
+                fill: pillSl.muted ? 0.0 : 1.0
+                color: pillSl.muted ? root.colUrgentInk : root.colText
+            }
+
+            Text {
+                x: pillSl.leftZoneW + 4
+                width: Math.max(20, parent.width - pillSl.leftZoneW - pillSl.rightZoneW - 48)
+                anchors.verticalCenter: parent.verticalCenter
+                text: pillSl.label
+                font.family: root.uiFont
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                color: pillSl.muted ? root.colUrgentInk : root.colText
+                elide: Text.ElideRight
+            }
+
+            Text {
+                anchors.right: parent.right
+                anchors.rightMargin: pillSl.rightZoneW + 10
+                anchors.verticalCenter: parent.verticalCenter
+                text: pillSl.valueText
+                font.family: root.uiFont
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                font.features: ({ "tnum": 1 })
+                color: pillSl.muted ? root.colUrgentInk : root.colSubtext
+            }
+
+            MatIcon {
+                visible: pillSl.hasDrawer
+                anchors.right: parent.right
+                anchors.rightMargin: 7
+                anchors.verticalCenter: parent.verticalCenter
+                icon: "expand_more"
+                size: 15
+                rotation: pillSl.drawerOpen ? 180 : 0
+                color: pillSl.drawerOpen ? root.colAccentInk : root.colSubtext
+                Behavior on rotation { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+            }
+        }
+
+        // Solid Accent Fill Layer clipped at slider ratio (colAccentOnFill on colAccent)
+        Item {
+            anchors.top: parent.top
             anchors.bottom: parent.bottom
             anchors.left: parent.left
+            readonly property real fillMaxW: Math.max(0, pillSl.width - pillSl.rightZoneW)
+            width: Math.max(0, Math.min(fillMaxW, fillMaxW * pillSl.ratio))
+            clip: true
+
+            Behavior on width {
+                enabled: !pillDragMa.pressed
+                NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+            }
+
+            Rectangle {
+                width: pillSl.width
+                height: pillSl.height
+                radius: pillSl.radius
+                color: root.colAccent
+
+                MatIcon {
+                    x: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    icon: pillSl.icon
+                    size: 16
+                    fill: 1.0
+                    color: root.colAccentOnFill
+                }
+
+                Text {
+                    x: pillSl.leftZoneW + 4
+                    width: Math.max(20, parent.width - pillSl.leftZoneW - pillSl.rightZoneW - 48)
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: pillSl.label
+                    font.family: root.uiFont
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    color: root.colAccentOnFill
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.rightMargin: pillSl.rightZoneW + 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: pillSl.valueText
+                    font.family: root.uiFont
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    font.features: ({ "tnum": 1 })
+                    color: root.colAccentOnFill
+                }
+
+                MatIcon {
+                    visible: pillSl.hasDrawer
+                    anchors.right: parent.right
+                    anchors.rightMargin: 7
+                    anchors.verticalCenter: parent.verticalCenter
+                    icon: "expand_more"
+                    size: 15
+                    rotation: pillSl.drawerOpen ? 180 : 0
+                    color: root.colAccentOnFill
+                    Behavior on rotation { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+                }
+            }
+        }
+
+        // Interactive Drag & Keyboard Slider Zone
+        Item {
+            id: pillTrackZone
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.leftMargin: pillSl.iconClickable ? pillSl.leftZoneW : 0
             anchors.right: parent.right
-            height: 1
+            anchors.rightMargin: pillSl.rightZoneW
+            activeFocusOnTab: pillSl.slEnabled || activeFocus
+            Accessible.role: Accessible.Slider
+            Accessible.name: pillSl.accessName
+
+            Rectangle {
+                visible: pillTrackZone.activeFocus
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: pillSl.radius - 1
+                color: "transparent"
+                border.width: 1.5
+                border.color: root.colText
+            }
+
+            MouseArea {
+                id: pillDragMa
+                anchors.fill: parent
+                enabled: pillSl.slEnabled
+                hoverEnabled: true
+                cursorShape: pillSl.slEnabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
+
+                function applyPos(mx: real): void {
+                    const totalX = pillTrackZone.x + mx;
+                    const r = Math.max(0.0, Math.min(1.0, totalX / Math.max(1, pillSl.width - pillSl.rightZoneW)));
+                    pillSl.moved(pillSl.minValue + r * pillSl.span);
+                }
+
+                onPressed: mouse => applyPos(mouse.x)
+                onPositionChanged: mouse => { if (pressed) applyPos(mouse.x); }
+                onWheel: wheel => pillSl.stepped(wheel.angleDelta.y > 0 ? pillSl.stepSize : -pillSl.stepSize)
+            }
+
+            Keys.onLeftPressed: event => {
+                if (pillSl.slEnabled) { pillSl.stepped(-pillSl.stepSize); event.accepted = true; }
+            }
+            Keys.onRightPressed: event => {
+                if (pillSl.slEnabled) { pillSl.stepped(pillSl.stepSize); event.accepted = true; }
+            }
+        }
+
+        // Optional Left Mute Button Hit Zone
+        Item {
+            visible: pillSl.iconClickable
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: pillSl.leftZoneW
+            activeFocusOnTab: pillSl.iconClickable
+            Accessible.role: Accessible.Button
+            Accessible.name: pillSl.iconAccessName.length > 0 ? pillSl.iconAccessName : `Mute ${pillSl.label}`
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 3
+                radius: 8
+                color: pillIconMa.containsMouse ? Qt.alpha(root.colText, 0.10) : "transparent"
+                border.width: parent.activeFocus ? 1 : 0
+                border.color: root.colText
+            }
+
+            MouseArea {
+                id: pillIconMa
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: pillSl.iconTriggered()
+            }
+            Keys.onReturnPressed: event => { pillSl.iconTriggered(); event.accepted = true; }
+            Keys.onSpacePressed: event => { pillSl.iconTriggered(); event.accepted = true; }
+        }
+
+        // Subtle divider separating slider track from trailing device-drawer button
+        Rectangle {
+            visible: pillSl.hasDrawer
+            anchors.right: parent.right
+            anchors.rightMargin: pillSl.rightZoneW
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin: 8
+            anchors.bottomMargin: 8
+            width: 1
             color: root.colHairline
         }
+
+        // Optional Right Audio Device Switcher Hit Zone
+        Item {
+            visible: pillSl.hasDrawer
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: pillSl.rightZoneW
+            activeFocusOnTab: pillSl.hasDrawer
+            Accessible.role: Accessible.Button
+            Accessible.name: pillSl.drawerAccessName.length > 0 ? pillSl.drawerAccessName : `Switch ${pillSl.label} device`
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 3
+                radius: 8
+                color: pillDrawerMa.containsMouse ? Qt.alpha(root.colText, 0.10) : "transparent"
+                border.width: parent.activeFocus ? 1 : 0
+                border.color: root.colText
+            }
+
+            MouseArea {
+                id: pillDrawerMa
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: pillSl.drawerTriggered()
+            }
+            Keys.onReturnPressed: event => { pillSl.drawerTriggered(); event.accepted = true; }
+            Keys.onSpacePressed: event => { pillSl.drawerTriggered(); event.accepted = true; }
+        }
+    }
+
+    // Compact Control Center Utility Tile (Right Middle Column)
+    component ControlActionTile: Rectangle {
+        id: actTile
+        property string icon: ""
+        property string label: ""
+        property string sublabel: ""
+        property bool active: false
+        property color activeFill: root.colAccent
+        property color activeInk: root.colAccentOnFill
+        property int mouseButtons: Qt.LeftButton
+        property string accessName: ""
+        property bool compact: false
+        signal triggered()
+        signal rightClicked()
+
+        Layout.fillWidth: true
+        implicitWidth: compact ? 69 : 134
+        implicitHeight: compact ? 61 : 38
+        radius: 12
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: accessName.length > 0 ? accessName : label
+        scale: actTileMa.pressed ? 0.96 : 1.0
+        color: actTile.active
+            ? (actTileMa.containsMouse ? Qt.lighter(actTile.activeFill, 1.06) : actTile.activeFill)
+            : (actTileMa.containsMouse ? root.colElevated : root.colSurface)
+        border.width: activeFocus ? 1.5 : 0
+        border.color: actTile.active ? root.colText : root.colAccentInk
+
+        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: 120; easing.type: Easing.OutCubic } }
+
+        RectangularShadow {
+            visible: !Theme.isDarkMode && !actTile.active
+            anchors.fill: parent
+            radius: parent.radius
+            blur: 10
+            spread: 0.0
+            offset.x: 0
+            offset.y: 2
+            color: Qt.alpha("#000000", 0.08)
+            z: -1
+        }
+
+        RowLayout {
+            visible: !actTile.compact
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 8
+
+            MatIcon {
+                icon: actTile.icon
+                size: 16
+                fill: actTile.active ? 1.0 : 0.0
+                color: actTile.active ? actTile.activeInk : root.colText
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                spacing: 0
+
+                Text {
+                    text: actTile.label
+                    font.family: root.uiFont
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    color: actTile.active ? actTile.activeInk : root.colText
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+
+                Text {
+                    visible: actTile.sublabel.length > 0
+                    text: actTile.sublabel
+                    font.family: root.uiFont
+                    font.pixelSize: 9
+                    font.weight: Font.Medium
+                    color: actTile.active ? Qt.alpha(actTile.activeInk, 0.85) : root.colSubtext
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
+        ColumnLayout {
+            visible: actTile.compact
+            anchors.centerIn: parent
+            width: parent.width - 10
+            spacing: 3
+
+            MatIcon {
+                Layout.alignment: Qt.AlignHCenter
+                icon: actTile.icon
+                size: 18
+                fill: actTile.active ? 1.0 : 0.0
+                color: actTile.active ? actTile.activeInk : root.colText
+            }
+
+            Text {
+                text: actTile.sublabel.length > 0 ? actTile.sublabel : actTile.label
+                font.family: root.uiFont
+                font.pixelSize: 10
+                font.weight: actTile.active ? Font.DemiBold : Font.Medium
+                color: actTile.active ? actTile.activeInk : root.colText
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+        }
+
+        MouseArea {
+            id: actTileMa
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: actTile.mouseButtons
+            cursorShape: Qt.PointingHandCursor
+            onClicked: mouse => {
+                if (mouse.button === Qt.RightButton) actTile.rightClicked();
+                else actTile.triggered();
+            }
+        }
+        Keys.onReturnPressed: event => { actTile.triggered(); event.accepted = true; }
+        Keys.onSpacePressed: event => { actTile.triggered(); event.accepted = true; }
     }
 
     // ========================================================================
@@ -611,15 +985,15 @@ PanelWindow {
         && ["#ffffff", "#f4f4f5", "#000000", "#12151c", "#171a1c", "#e8ebeb"].includes(Theme.customAccent.toLowerCase())
 
     readonly property color colMainSolid: Theme.background
-    readonly property color colDeckBg: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.90 : 0.94)
-    readonly property color colDrawerTint: Qt.alpha(Theme.surfaceContainerLow, Theme.isDarkMode ? 0.65 : 0.80)
+    readonly property color colDeckBg: Theme.background
+    readonly property color colDrawerTint: Qt.alpha(Theme.surfaceContainerLow, Theme.isDarkMode ? 0.72 : 0.90)
     readonly property color colSurface: Theme.surface
     readonly property color colElevated: Theme.surfaceContainer
     readonly property color colText: Theme.text
     readonly property color colSubtext: Theme.subtext
     readonly property color colBorderOuter: Qt.alpha(Theme.text, Theme.isDarkMode ? 0.08 : 0.10)
     readonly property color colHairline: Qt.alpha(Theme.text, Theme.isDarkMode ? 0.06 : 0.07)
-    readonly property color colTrackRail: Qt.alpha(Theme.text, Theme.isDarkMode ? 0.13 : 0.53)
+    readonly property color colTrackRail: Qt.alpha(Theme.text, Theme.isDarkMode ? 0.13 : 0.18)
 
     readonly property color colUrgentInk: Theme.urgentInk
     readonly property color colSuccessInk: Theme.successInk
@@ -721,6 +1095,9 @@ PanelWindow {
                 root.selectedWifiSsid = targetSsid;
                 root.focusActiveWifiPassInput(true);
             }
+        }
+        function onAirplaneModeChanged() {
+            Bluetooth.refresh();
         }
     }
 
@@ -836,25 +1213,6 @@ PanelWindow {
             if (Config.dashboardOpen) Config.dashboardCardHovered = isAnyCardHovered;
         }
 
-        // Hover bridge covering the gap between top bar and dashCard (zero UI impact)
-        Item {
-            id: dashHoverZone
-            readonly property real screenW: (root.screen && root.screen.width > 0)
-                ? root.screen.width
-                : (Screen.width > 0 ? Screen.width : 1366)
-            x: (root.width > dashCard.width)
-                ? dashCard.x
-                : Math.max(0, screenW - dashCard.width - Config.barMarginSide)
-            y: Math.max(0, Config.barMarginTop + Config.barHeight - 3)
-            width: dashCard.width
-            height: Math.max(0, (dashCard.y + dashCard.height) - y)
-
-            HoverHandler {
-                id: bridgeHover
-                enabled: Config.dashboardOpen
-            }
-        }
-
         // Leaf sink so Escape/close reliably unfocuses child controls inside this FocusScope
         Item {
             id: dashKeySink
@@ -863,353 +1221,401 @@ PanelWindow {
             height: 0
         }
 
-        RectangularShadow {
-            anchors.fill: dashCard
-            radius: dashCard.radius
-            blur: 18
-            spread: 0
-            offset.y: 6
-            color: Qt.alpha("#000000", Theme.isDarkMode ? 0.40 : 0.12)
-            opacity: dashCard.opacity
-            scale: dashCard.scale
-            transformOrigin: Item.TopRight
-        }
-
-        // Unified Sora Shell Surface (No inner website-card containers)
-        Rectangle {
-            id: dashCard
-            readonly property int maxCardHeight: Math.max(360, ((root.height > 200 ? root.height : ((root.screen && root.screen.height > 0) ? root.screen.height : (Screen.height > 0 ? Screen.height : 900))) - 64))
-            readonly property int targetContentHeight: heroBanner.implicitHeight + bodyFlick.contentHeight
-
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.topMargin: (Config.barMarginTop + Config.barHeight + 6) - ((1.0 - root.openProgress) * 10)
-            anchors.rightMargin: Config.barMarginSide
-            width: 408
-            height: Math.min(targetContentHeight, maxCardHeight)
-            radius: 14
-            color: root.colDeckBg
-            border.width: 1
-            border.color: root.colBorderOuter
-            opacity: root.openProgress
-            scale: 0.97 + (0.03 * root.openProgress)
-            transformOrigin: Item.TopRight
+        // Clip drawer, flares, and shadow strictly inside the ScreenBorder inner cutout
+        Item {
+            id: dashScreenClip
+            anchors.fill: parent
+            anchors.margins: Math.max(0, Config.screenBorderSize)
             clip: true
 
-            Behavior on height {
+            // Hover bridge covering the gap between ScreenBorder edge and Bottom-Right Drawer
+            Item {
+                id: dashHoverZone
+                x: dashContainer.x
+                y: Math.max(0, dashContainer.y - 4)
+                width: Math.max(0, dashScreenClip.width - dashContainer.x)
+                height: Math.max(0, dashScreenClip.height - Math.max(0, dashContainer.y - 4))
+
+                HoverHandler {
+                    id: bridgeHover
+                    enabled: Config.dashboardOpen
+                }
+            }
+
+            Item {
+                id: dashContainer
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 0
+                anchors.right: parent.right
+                anchors.rightMargin: 0
+
+                readonly property int targetWidth: 408
+                readonly property int flareMax: 10
+                readonly property int cardRadius: 18
+                readonly property int maxCardHeight: Math.max(360, ((root.height > 200 ? root.height : ((root.screen && root.screen.height > 0) ? root.screen.height : (Screen.height > 0 ? Screen.height : 900))) - root.drawerTopY - Config.screenBorderSize - Math.max(8, Config.screenBorderRadius) - flareMax))
+            property int targetHeight: Math.min(heroBanner.implicitHeight + 18 + bodyFlick.contentHeight, maxCardHeight)
+            Behavior on targetHeight {
                 enabled: root._settled && root._animReady && (!Config.dashboardOpen || root.openProgress >= 0.99 || Config.activeSubPanel.length > 0 || root.showAllNotifs)
                 NumberAnimation { duration: 170; easing.type: Easing.OutCubic }
             }
 
-            HoverHandler {
-                id: cardHover
-                enabled: Config.dashboardOpen
+            readonly property real bodyW: targetWidth
+            readonly property real bodyH: Math.max(0.0, targetHeight * root.openProgress)
+            readonly property real effFlare: Math.max(0.5, Math.min(flareMax, bodyH * 0.45))
+            readonly property real effCardR: Math.max(0.5, Math.min(cardRadius, bodyH * 0.45))
+
+            width: bodyW + effFlare
+            height: bodyH + effFlare
+            opacity: Math.max(0.0, Math.min(1.0, root.clamped * 2.2))
+
+            RectangularShadow {
+                visible: !Theme.isDarkMode && dashContainer.bodyH > 4
+                x: dashContainer.effFlare
+                y: dashContainer.effFlare
+                width: dashContainer.bodyW
+                height: dashContainer.bodyH
+                radius: dashContainer.effCardR
+                blur: 16
+                spread: 0
+                offset.x: -2
+                offset.y: -2
+                color: Qt.alpha("#000000", 0.12)
             }
 
-            MouseArea {
+            // Borderless Bottom-Right Corner Drawer fused flush to both right & bottom ScreenBorder
+            Shape {
+                id: dashShape
                 anchors.fill: parent
-            }
+                preferredRendererType: Shape.CurveRenderer
+                visible: dashContainer.bodyH > 1
 
-            // Clean MultiEffect inner rounded clip so edge-to-edge banner respects border radius
-            Rectangle {
-                id: dashInnerMask
-                anchors.fill: parent
-                anchors.margins: 1
-                radius: 13
-                color: "#ffffff"
-                visible: false
-                layer.enabled: true
-            }
+                ShapePath {
+                    strokeWidth: -1
+                    fillColor: root.colDeckBg
 
-            Item {
-                id: dashClipViewport
-                anchors.fill: parent
-                anchors.margins: 1
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    maskEnabled: true
-                    maskSource: dashInnerMask
-                    maskSpreadAtMin: 1.0
-                    maskThresholdMin: 0.5
+                    startX: dashShape.width
+                    startY: 0
+                    PathArc {
+                        x: dashShape.width - dashContainer.effFlare
+                        y: dashContainer.effFlare
+                        radiusX: dashContainer.effFlare
+                        radiusY: dashContainer.effFlare
+                        direction: PathArc.Clockwise
+                    }
+                    PathLine { x: dashContainer.effFlare + dashContainer.effCardR; y: dashContainer.effFlare }
+                    PathArc {
+                        x: dashContainer.effFlare
+                        y: dashContainer.effFlare + dashContainer.effCardR
+                        radiusX: dashContainer.effCardR
+                        radiusY: dashContainer.effCardR
+                        direction: PathArc.Counterclockwise
+                    }
+                    PathLine { x: dashContainer.effFlare; y: dashShape.height - dashContainer.effFlare }
+                    PathArc {
+                        x: 0
+                        y: dashShape.height
+                        radiusX: dashContainer.effFlare
+                        radiusY: dashContainer.effFlare
+                        direction: PathArc.Clockwise
+                    }
+                    PathLine { x: dashShape.width; y: dashShape.height }
+                    PathLine { x: dashShape.width; y: 0 }
                 }
+            }
+
+            // Clipped sliding viewport emerging upward from ScreenBorder bottom edge
+            Item {
+                id: dashViewport
+                x: dashContainer.effFlare
+                y: dashContainer.effFlare
+                width: dashContainer.bodyW
+                height: dashContainer.bodyH
+                clip: true
+
+                // Unified Sora Shell Surface (borderless, shadowless)
+                Item {
+                    id: dashCard
+                    readonly property int maxCardHeight: dashContainer.maxCardHeight
+                    x: 0
+                    y: 0
+                    width: dashContainer.targetWidth
+                    height: dashContainer.targetHeight
+                    opacity: Math.max(0.0, Math.min(1.0, root.clamped * 1.35))
+
+                    HoverHandler {
+                        id: cardHover
+                        enabled: Config.dashboardOpen
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                    }
+
+                    Item {
+                        id: dashClipViewport
+                        anchors.fill: parent
 
                 // ============================================================
-                // 1. TOP ATMOSPHERIC BANNER (Active Wallpaper + ~/.face Avatar)
-                // Framed to keep character eyes & expression clear without gray mud
+                // 1. COMPACT CONTROL CENTER HEADER BAR (58px)
                 // ============================================================
                 Item {
                     id: heroBanner
                     anchors.top: parent.top
+                    anchors.topMargin: 10
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    implicitHeight: 104
-                    clip: true
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    implicitHeight: 58
 
-                    Image {
-                        id: heroBannerImg
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: heroBannerCard
+                        radius: heroBannerCard.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.08)
+                    }
+
+                    Rectangle {
+                        id: heroBannerCard
                         anchors.fill: parent
-                        source: ThemeEngine.dashboardBannerSrc
-                        sourceSize.width: 816
-                        sourceSize.height: 208
-                        fillMode: Image.PreserveAspectCrop
-                        verticalAlignment: Image.AlignTop
-                        asynchronous: true
-                        cache: true
-                        smooth: true
-                        opacity: Theme.isDarkMode ? 0.96 : 1.0
+                        radius: 14
+                        color: root.colSurface
                     }
 
-                    // Subtle bottom edge feather integrates banner organically into panel surface
                     Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: Theme.isDarkMode ? 24 : 20
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 1.0; color: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.68 : 0.38) }
-                        }
+                        id: heroBannerMask
+                        anchors.fill: parent
+                        radius: 14
+                        color: "#ffffff"
+                        visible: false
+                        layer.enabled: true
                     }
 
-                    // Subtle top edge atmospheric scrim ensures top-strip legibility over bright skies
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        height: 44
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: Qt.alpha(Theme.isDarkMode ? "#121517" : Theme.background, Theme.isDarkMode ? 0.52 : 0.58) }
-                            GradientStop { position: 0.55; color: Qt.alpha(Theme.isDarkMode ? "#121517" : Theme.background, 0.28) }
-                            GradientStop { position: 1.0; color: "transparent" }
-                        }
-                    }
-
-                    // Asymmetric left-side readability veil covers identity + uptime cleanly without muddying artwork
-                    Rectangle {
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        width: parent.width * 0.68
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: Qt.alpha(Theme.isDarkMode ? "#121517" : Theme.background, Theme.isDarkMode ? 0.76 : 0.80) }
-                            GradientStop { position: 0.50; color: Qt.alpha(Theme.isDarkMode ? "#121517" : Theme.background, Theme.isDarkMode ? 0.52 : 0.56) }
-                            GradientStop { position: 0.76; color: Qt.alpha(Theme.isDarkMode ? "#121517" : Theme.background, Theme.isDarkMode ? 0.26 : 0.24) }
-                            GradientStop { position: 1.0; color: "transparent" }
-                        }
-                    }
-
-                    // Top strip: Quiet subordinate brand mark left, consistent refined icon actions right
-                    RowLayout {
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.topMargin: 10
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 10
-                        spacing: 6
-
-                        Text {
-                            text: "SORA"
-                            font.family: root.uiFont
-                            font.pixelSize: 10
-                            font.weight: Font.Medium
-                            font.letterSpacing: 1.8
-                            color: Theme.isDarkMode ? Qt.alpha("#F4F6F6", 0.72) : root.colSubtext
-                            Layout.fillWidth: true
+                    Item {
+                        anchors.fill: parent
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            maskEnabled: true
+                            maskSource: heroBannerMask
+                            maskSpreadAtMin: 1.0
+                            maskThresholdMin: 0.5
                         }
 
-                        DashIconButton {
-                            implicitWidth: 28
-                            implicitHeight: 28
-                            icon: RecorderService.isRecording ? "stop_circle" : "screen_record"
-                            iconSize: 17
-                            iconWeight: 350
-                            destructive: RecorderService.isRecording
-                            active: RecorderService.isRecording
-                            fillIcon: RecorderService.isRecording
-                            accentFill: Theme.urgent
-                            normalInk: RecorderService.isRecording ? root.colUrgentInk : (Theme.isDarkMode ? "#F6F8F8" : root.colText)
-                            hoverInk: RecorderService.isRecording ? "#FCA5A5" : (Theme.isDarkMode ? "#FFFFFF" : root.colText)
-                            idleBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.14) : Qt.alpha(Theme.surface, 0.72)
-                            hoverBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.44) : Theme.surface
-                            dangerBg: Theme.isDarkMode ? Qt.alpha("#42191D", 0.62) : Qt.alpha(Theme.surface, 0.92)
-                            accessName: RecorderService.isRecording ? "Stop screen recording" : "Screen record (Left: Region, Right: Fullscreen + Mic)"
-                            mouseButtons: Qt.LeftButton | Qt.RightButton
-                            onTriggered: {
-                                if (RecorderService.isRecording) {
-                                    RecorderService.stopRecording();
-                                } else {
-                                    Config.dashboardPinned = false;
-                                    Config.dashboardOpen = false;
-                                    RecorderService.toggleRecordRegion();
-                                }
-                            }
-                            onRightClicked: {
-                                if (RecorderService.isRecording) {
-                                    RecorderService.stopRecording();
-                                } else {
-                                    Config.dashboardPinned = false;
-                                    Config.dashboardOpen = false;
-                                    RecorderService.toggleRecordFullscreen(true);
-                                }
-                            }
+                        // Subtle ambient wallpaper texture under header bar
+                        Image {
+                            id: heroBannerImg
+                            anchors.fill: parent
+                            source: ThemeEngine.dashboardBannerSrc
+                            sourceSize.width: 816
+                            sourceSize.height: 116
+                            fillMode: Image.PreserveAspectCrop
+                            verticalAlignment: Image.AlignVCenter
+                            asynchronous: true
+                            cache: true
+                            smooth: true
+                            opacity: Theme.isDarkMode ? 0.16 : 0.08
                         }
 
-                        DashIconButton {
-                            implicitWidth: 28
-                            implicitHeight: 28
-                            icon: Theme.isDarkMode ? "dark_mode" : "light_mode"
-                            iconSize: 17
-                            iconWeight: 350
-                            normalInk: Theme.isDarkMode ? "#F6F8F8" : root.colText
-                            hoverInk: Theme.isDarkMode ? "#FFFFFF" : root.colText
-                            idleBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.14) : Qt.alpha(Theme.surface, 0.72)
-                            hoverBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.44) : Theme.surface
-                            accessName: Theme.isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
-                            onTriggered: ThemeEngine.toggleThemeMode()
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Qt.alpha(root.colSurface, Theme.isDarkMode ? 0.78 : 0.86)
                         }
 
-                        DashIconButton {
-                            implicitWidth: 28
-                            implicitHeight: 28
-                            icon: "palette"
-                            iconSize: 17
-                            iconWeight: 350
-                            active: Config.activeSubPanel === "wallpapers"
-                            fillIcon: active
-                            accentFill: root.colAccent
-                            activeBg: Theme.isDarkMode ? Qt.alpha(root.colAccent, 0.24) : Qt.alpha(Theme.surface, 0.92)
-                            accentInk: Theme.isDarkMode ? "#FFFFFF" : root.colAccentInk
-                            normalInk: Theme.isDarkMode ? "#F6F8F8" : root.colText
-                            hoverInk: Theme.isDarkMode ? "#FFFFFF" : root.colText
-                            idleBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.14) : Qt.alpha(Theme.surface, 0.72)
-                            hoverBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.44) : Theme.surface
-                            accessName: "Appearance Settings"
-                            onTriggered: root.toggleSubPanel("wallpapers")
-                        }
-
-                        DashIconButton {
-                            implicitWidth: 28
-                            implicitHeight: 28
-                            icon: "power_settings_new"
-                            iconSize: 17
-                            iconWeight: 350
-                            destructive: true
-                            normalInk: Theme.isDarkMode ? "#F6F8F8" : root.colText
-                            hoverInk: Theme.isDarkMode ? "#FCA5A5" : root.colUrgentInk
-                            idleBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.14) : Qt.alpha(Theme.surface, 0.72)
-                            hoverBg: Theme.isDarkMode ? Qt.alpha("#141719", 0.44) : Theme.surface
-                            dangerBg: Theme.isDarkMode ? Qt.alpha("#42191D", 0.62) : Qt.alpha(Theme.surface, 0.92)
-                            accessName: "Power Menu"
-                            onTriggered: Config.togglePowerMenu()
-                        }
-                    }
-
-                    // Bottom primary session identity row
-                    RowLayout {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 16
-                        anchors.bottomMargin: 11
-                        spacing: 10
-
-                        // Circular Sora Avatar (~/.face with monogram fallback)
+                        // Compact Header Row: Avatar, User/Uptime & 4 action buttons
                         Item {
-                            implicitWidth: 38
-                            implicitHeight: 38
+                            anchors.fill: parent
 
-                            Rectangle {
-                                id: bannerAvatarMask
+                            RowLayout {
                                 anchors.fill: parent
-                                radius: 19
-                                color: "#ffffff"
-                                visible: false
-                                layer.enabled: true
-                            }
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 10
+                                spacing: 10
 
-                            Item {
-                                anchors.fill: parent
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    maskEnabled: true
-                                    maskSource: bannerAvatarMask
-                                    maskSpreadAtMin: 1.0
-                                    maskThresholdMin: 0.5
-                                }
+                                // Circular Sora Avatar (~/.face with monogram fallback)
+                                Item {
+                                    implicitWidth: 34
+                                    implicitHeight: 34
+                                    Layout.alignment: Qt.AlignVCenter
 
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: Theme.isDarkMode ? "#202629" : Theme.surfaceContainerHigh
+                                    Rectangle {
+                                        id: bannerAvatarMask
+                                        anchors.fill: parent
+                                        radius: 17
+                                        color: "#ffffff"
+                                        visible: false
+                                        layer.enabled: true
+                                    }
 
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: root.userName.slice(0, 1).toUpperCase()
-                                        font.family: root.uiFont
-                                        font.pixelSize: 15
-                                        font.weight: Font.Bold
-                                        color: Theme.isDarkMode ? "#F4F6F6" : root.colText
+                                    Item {
+                                        anchors.fill: parent
+                                        layer.enabled: true
+                                        layer.effect: MultiEffect {
+                                            maskEnabled: true
+                                            maskSource: bannerAvatarMask
+                                            maskSpreadAtMin: 1.0
+                                            maskThresholdMin: 0.5
+                                        }
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: root.colElevated
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: root.userName.slice(0, 1).toUpperCase()
+                                                font.family: root.uiFont
+                                                font.pixelSize: 14
+                                                font.weight: Font.Bold
+                                                color: root.colText
+                                            }
+                                        }
+
+                                        Image {
+                                            id: avatarImg
+                                            anchors.fill: parent
+                                            source: `file://${Quickshell.env("HOME")}/.face`
+                                            sourceSize.width: 152
+                                            sourceSize.height: 152
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            smooth: true
+                                            visible: status === Image.Ready
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 17
+                                        color: "transparent"
+                                        border.width: 1
+                                        border.color: root.colBorderOuter
                                     }
                                 }
 
-                                Image {
-                                    id: avatarImg
-                                    anchors.fill: parent
-                                    source: `file://${Quickshell.env("HOME")}/.face`
-                                    sourceSize.width: 152
-                                    sourceSize.height: 152
-                                    fillMode: Image.PreserveAspectCrop
-                                    asynchronous: true
-                                    smooth: true
-                                    visible: status === Image.Ready
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 1
+
+                                    Text {
+                                        text: root.userName
+                                        font.family: root.uiFont
+                                        font.pixelSize: 13
+                                        font.weight: Font.DemiBold
+                                        font.letterSpacing: -0.15
+                                        color: root.colText
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Text {
+                                        text: root.uptimeText
+                                        font.family: root.uiFont
+                                        font.pixelSize: 11
+                                        font.weight: Font.Normal
+                                        color: root.colSubtext
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 4
+
+                                    DashIconButton {
+                                        implicitWidth: 28
+                                        implicitHeight: 28
+                                        icon: RecorderService.isRecording ? "stop_circle" : "screen_record"
+                                        iconSize: 17
+                                        iconWeight: 350
+                                        destructive: RecorderService.isRecording
+                                        active: RecorderService.isRecording
+                                        fillIcon: RecorderService.isRecording
+                                        accentFill: Theme.urgent
+                                        normalInk: RecorderService.isRecording ? root.colUrgentInk : root.colSubtext
+                                        hoverInk: RecorderService.isRecording ? root.colUrgentInk : root.colText
+                                        idleBg: "transparent"
+                                        hoverBg: Qt.alpha(root.colText, 0.07)
+                                        dangerBg: Qt.alpha(Theme.urgent, 0.14)
+                                        accessName: RecorderService.isRecording ? "Stop screen recording" : "Screen record (Left: Region, Right: Fullscreen + Mic)"
+                                        mouseButtons: Qt.LeftButton | Qt.RightButton
+                                        onTriggered: {
+                                            if (RecorderService.isRecording) {
+                                                RecorderService.stopRecording();
+                                            } else {
+                                                Config.dashboardPinned = false;
+                                                Config.dashboardOpen = false;
+                                                RecorderService.toggleRecordRegion();
+                                            }
+                                        }
+                                        onRightClicked: {
+                                            if (RecorderService.isRecording) {
+                                                RecorderService.stopRecording();
+                                            } else {
+                                                Config.dashboardPinned = false;
+                                                Config.dashboardOpen = false;
+                                                RecorderService.toggleRecordFullscreen(true);
+                                            }
+                                        }
+                                    }
+
+                                    DashIconButton {
+                                        implicitWidth: 28
+                                        implicitHeight: 28
+                                        icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
+                                        iconSize: 17
+                                        iconWeight: 350
+                                        normalInk: root.colSubtext
+                                        hoverInk: root.colText
+                                        idleBg: "transparent"
+                                        hoverBg: Qt.alpha(root.colText, 0.07)
+                                        accessName: Theme.isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
+                                        onTriggered: ThemeEngine.toggleThemeMode()
+                                    }
+
+                                    DashIconButton {
+                                        implicitWidth: 28
+                                        implicitHeight: 28
+                                        icon: "palette"
+                                        iconSize: 17
+                                        iconWeight: 350
+                                        active: Config.activeSubPanel === "wallpapers"
+                                        fillIcon: active
+                                        accentFill: root.colAccent
+                                        activeBg: Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.18 : 0.14)
+                                        accentInk: root.colAccentInk
+                                        normalInk: root.colSubtext
+                                        hoverInk: root.colText
+                                        idleBg: "transparent"
+                                        hoverBg: Qt.alpha(root.colText, 0.07)
+                                        accessName: "Appearance Settings"
+                                        onTriggered: root.toggleSubPanel("wallpapers")
+                                    }
+
+                                    DashIconButton {
+                                        implicitWidth: 28
+                                        implicitHeight: 28
+                                        icon: "power_settings_new"
+                                        iconSize: 17
+                                        iconWeight: 350
+                                        destructive: true
+                                        normalInk: root.colSubtext
+                                        hoverInk: root.colUrgentInk
+                                        idleBg: "transparent"
+                                        hoverBg: Qt.alpha(root.colText, 0.07)
+                                        dangerBg: Qt.alpha(Theme.urgent, 0.14)
+                                        accessName: "Power Menu"
+                                        onTriggered: Config.togglePowerMenu()
+                                    }
                                 }
                             }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 19
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Theme.isDarkMode ? Qt.alpha("#141719", 0.36) : Theme.outlineStrong
-                            }
                         }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 1
-
-                            Text {
-                                text: root.userName
-                                font.family: root.uiFont
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                                font.letterSpacing: -0.15
-                                color: Theme.isDarkMode ? "#F6F8F8" : root.colText
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: root.uptimeText
-                                font.family: root.uiFont
-                                font.pixelSize: 11
-                                font.weight: Font.Normal
-                                color: Theme.isDarkMode ? Qt.alpha("#F4F6F6", 0.86) : root.colSubtext
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        height: 1
-                        color: root.colHairline
                     }
                 }
 
@@ -1219,11 +1625,12 @@ PanelWindow {
                 Flickable {
                     id: bodyFlick
                     anchors.top: heroBanner.bottom
+                    anchors.topMargin: 8
                     anchors.bottom: parent.bottom
                     anchors.left: parent.left
                     anchors.right: parent.right
                     contentWidth: width
-                    contentHeight: bodyCol.implicitHeight
+                    contentHeight: bodyCol.implicitHeight + 10
                     boundsBehavior: Flickable.StopAtBounds
                     flickableDirection: Flickable.VerticalFlick
                     clip: true
@@ -1238,17 +1645,31 @@ PanelWindow {
 
                     ColumnLayout {
                         id: bodyCol
-                        width: bodyFlick.width
-                        spacing: 0
+                        x: 10
+                        width: bodyFlick.width - 20
+                        spacing: 8
 
                         // ====================================================
-                        // APPEARANCE & WALLPAPER DRAWER (Inline Canvas Band)
+                        // APPEARANCE & WALLPAPER DRAWER (Sora Bento Card)
                         // ====================================================
                         Rectangle {
                             Layout.fillWidth: true
                             visible: Config.activeSubPanel === "wallpapers"
                             implicitHeight: visible ? (wallStudioCol.implicitHeight + 24) : 0
-                            color: root.colDrawerTint
+                            radius: 14
+                            color: root.colSurface
+
+                            RectangularShadow {
+                                visible: !Theme.isDarkMode
+                                anchors.fill: parent
+                                radius: parent.radius
+                                blur: 12
+                                spread: 0.0
+                                offset.x: 0
+                                offset.y: 2
+                                color: Qt.alpha("#000000", 0.10)
+                                z: -1
+                            }
 
                             ColumnLayout {
                                 id: wallStudioCol
@@ -1534,7 +1955,7 @@ PanelWindow {
                                             Accessible.role: Accessible.Button
                                             Accessible.name: wallTile.modelData.split("/").pop().replace(/\.[^/.]+$/, "")
                                             border.width: isSelected || activeFocus ? 2 : 0
-                                            border.color: isSelected ? root.colAccent : root.colAccentInk
+                                            border.color: root.colAccentInk
 
                                             Image {
                                                 anchors.fill: parent
@@ -1598,150 +2019,287 @@ PanelWindow {
                                     }
                                 }
                             }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 1
-                                color: root.colHairline
-                            }
                         }
 
                         // ====================================================
-                        // 2. SEAMLESS MEDIA STAGE (Full-Bleed Cover Underlay)
+                        // 2. TOP CONTROL DECK: 2x2 CONNECTIVITY + MEDIA TILE
                         // ====================================================
-                        Item {
-                            id: mediaStage
+                        RowLayout {
+                            id: ccTopRow
                             Layout.fillWidth: true
                             visible: Config.activeSubPanel !== "wallpapers"
-                            implicitHeight: visible ? (root.activePlayer !== null ? (mediaActiveCol.implicitHeight + 24) : 38) : 0
-                            clip: true
+                            implicitHeight: visible ? 156 : 0
+                            spacing: 8
 
-                            // Atmospheric album art underlay integrated into main canvas (only when playing track has art)
-                            Image {
-                                anchors.fill: parent
-                                visible: root.activePlayer !== null && coverArt.status === Image.Ready
-                                source: root.activePlayer?.trackArtUrl ?? ""
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                smooth: true
-                                opacity: Theme.isDarkMode ? 0.16 : 0.08
-                            }
-
-                            // Uniform canvas veil preserves artwork mood while guaranteeing clean text contrast
+                            // LEFT (190x156): 2x2 iOS Connectivity & Focus Cluster
                             Rectangle {
-                                anchors.fill: parent
-                                visible: root.activePlayer !== null && coverArt.status === Image.Ready
-                                color: Qt.alpha(root.colMainSolid, Theme.isDarkMode ? 0.78 : 0.84)
-                            }
+                                id: connCluster
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 190
+                                Layout.preferredHeight: 156
+                                radius: 14
+                                color: root.colSurface
 
-                            // Active Player Foreground
-                            ColumnLayout {
-                                id: mediaActiveCol
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.leftMargin: 16
-                                anchors.rightMargin: 16
-                                anchors.topMargin: 12
-                                spacing: 8
-                                visible: root.activePlayer !== null
+                                RectangularShadow {
+                                    visible: !Theme.isDarkMode
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                    blur: 12
+                                    spread: 0.0
+                                    offset.x: 0
+                                    offset.y: 2
+                                    color: Qt.alpha("#000000", 0.08)
+                                    z: -1
+                                }
 
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 12
+                                GridLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    columns: 2
+                                    rows: 2
+                                    columnSpacing: 6
+                                    rowSpacing: 6
 
-                                    // Clean Cover Artwork Anchor
-                                    Rectangle {
-                                        Layout.preferredWidth: 64
-                                        Layout.preferredHeight: 64
-                                        radius: 8
-                                        color: root.colElevated
-                                        clip: true
-
-                                        Image {
-                                            id: coverArt
-                                            anchors.fill: parent
-                                            source: root.activePlayer?.trackArtUrl ?? ""
-                                            fillMode: Image.PreserveAspectCrop
-                                            asynchronous: true
-                                            visible: status === Image.Ready
-                                        }
-
-                                        MatIcon {
-                                            anchors.centerIn: parent
-                                            visible: coverArt.status !== Image.Ready
-                                            icon: "album"
-                                            size: 28
-                                            color: root.colSubtext
-                                        }
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            radius: 8
-                                            color: "transparent"
-                                            border.width: 1
-                                            border.color: root.colBorderOuter
-                                        }
+                                    ControlClusterButton {
+                                        icon: Network.airplaneMode ? "airplanemode_active" : "airplanemode_inactive"
+                                        label: "Airplane"
+                                        active: Network.airplaneMode
+                                        busy: Network.airplaneBusy
+                                        accessName: Network.airplaneMode ? "Turn Airplane Mode Off" : "Turn Airplane Mode On"
+                                        onToggled: Network.toggleAirplaneMode(Bluetooth.powered)
                                     }
 
+                                    ControlClusterButton {
+                                        icon: Network.wifiEnabled ? (Network.isConnected ? "wifi" : "wifi_find") : "wifi_off"
+                                        label: Network.isConnected ? Network.ssid : "Wi-Fi"
+                                        active: Network.wifiEnabled
+                                        hasDrawer: true
+                                        drawerOpen: Config.activeSubPanel === "wifi"
+                                        accessName: Network.wifiEnabled ? "Turn Wi-Fi Off" : "Turn Wi-Fi On"
+                                        drawerAccessName: "Wi-Fi networks list"
+                                        onToggled: Network.toggleWifi()
+                                        onExpandTriggered: root.toggleSubPanel("wifi")
+                                    }
+
+                                    ControlClusterButton {
+                                        icon: Bluetooth.connectedDevice.length > 0
+                                            ? "bluetooth_connected"
+                                            : (Bluetooth.powered ? "bluetooth" : "bluetooth_disabled")
+                                        label: Bluetooth.connectedDevice.length > 0 ? Bluetooth.connectedDevice : "Bluetooth"
+                                        active: Bluetooth.powered
+                                        busy: Bluetooth.powerBusy
+                                        hasDrawer: true
+                                        drawerOpen: Config.activeSubPanel === "bluetooth"
+                                        accessName: Bluetooth.powered ? "Turn Bluetooth Off" : "Turn Bluetooth On"
+                                        drawerAccessName: "Bluetooth devices list"
+                                        onToggled: Bluetooth.togglePower()
+                                        onExpandTriggered: root.toggleSubPanel("bluetooth")
+                                    }
+
+                                    ControlClusterButton {
+                                        icon: "notifications"
+                                        activeIcon: "notifications_off"
+                                        label: "DND"
+                                        active: Config.dndEnabled
+                                        accessName: "Toggle Do Not Disturb"
+                                        onToggled: Config.dndEnabled = !Config.dndEnabled
+                                    }
+                                }
+                            }
+
+                            // RIGHT (190x156): Square Now Playing Media Tile
+                            Item {
+                                id: mediaStage
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 190
+                                Layout.preferredHeight: 156
+
+                                RectangularShadow {
+                                    visible: !Theme.isDarkMode
+                                    anchors.fill: mediaCardBg
+                                    radius: mediaCardBg.radius
+                                    blur: 12
+                                    spread: 0.0
+                                    offset.x: 0
+                                    offset.y: 2
+                                    color: Qt.alpha("#000000", 0.08)
+                                }
+
+                                Rectangle {
+                                    id: mediaCardBg
+                                    anchors.fill: parent
+                                    radius: 14
+                                    color: root.colSurface
+                                    clip: true
+
+                                    // Atmospheric album art underlay (contrast preserved by veil below)
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: root.activePlayer !== null && coverArt.status === Image.Ready
+                                        source: root.activePlayer?.trackArtUrl ?? ""
+                                        sourceSize.width: 240
+                                        sourceSize.height: 240
+                                        fillMode: Image.PreserveAspectCrop
+                                        asynchronous: true
+                                        smooth: true
+                                        opacity: Theme.isDarkMode ? 0.18 : 0.10
+                                    }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        visible: root.activePlayer !== null && coverArt.status === Image.Ready
+                                        color: Qt.alpha(root.colSurface, Theme.isDarkMode ? 0.78 : 0.86)
+                                    }
+
+                                    // Active Player Square Card
                                     ColumnLayout {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        Layout.preferredHeight: 64
-                                        Layout.alignment: Qt.AlignVCenter
-                                        spacing: 0
+                                        id: mediaActiveCol
+                                        anchors.fill: parent
+                                        anchors.margins: 11
+                                        spacing: 6
+                                        visible: root.activePlayer !== null
 
-                                        ColumnLayout {
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                            Layout.minimumWidth: 0
-                                            spacing: 1
+                                            spacing: 9
 
-                                            Text {
-                                                text: root.activePlayer?.trackTitle || "Untitled Track"
-                                                font.family: root.uiFont
-                                                font.pixelSize: 13
-                                                font.weight: Font.DemiBold
-                                                font.letterSpacing: -0.15
-                                                color: root.colText
-                                                maximumLineCount: 1
-                                                elide: Text.ElideRight
-                                                Layout.fillWidth: true
+                                            Rectangle {
+                                                Layout.preferredWidth: 42
+                                                Layout.preferredHeight: 42
+                                                radius: 8
+                                                color: root.colElevated
+                                                clip: true
+
+                                                Image {
+                                                    id: coverArt
+                                                    anchors.fill: parent
+                                                    source: root.activePlayer?.trackArtUrl ?? ""
+                                                    sourceSize.width: 120
+                                                    sourceSize.height: 120
+                                                    fillMode: Image.PreserveAspectCrop
+                                                    asynchronous: true
+                                                    visible: status === Image.Ready
+                                                }
+
+                                                MatIcon {
+                                                    anchors.centerIn: parent
+                                                    visible: coverArt.status !== Image.Ready
+                                                    icon: "album"
+                                                    size: 20
+                                                    color: root.colSubtext
+                                                }
+
+                                                Rectangle {
+                                                    anchors.fill: parent
+                                                    radius: 8
+                                                    color: "transparent"
+                                                    border.width: 1
+                                                    border.color: root.colBorderOuter
+                                                }
                                             }
 
-                                            Text {
-                                                text: root.activePlayer?.trackArtist || "Unknown Artist"
-                                                font.family: root.uiFont
-                                                font.pixelSize: 11
-                                                color: root.colSubtext
-                                                maximumLineCount: 1
-                                                elide: Text.ElideRight
+                                            ColumnLayout {
                                                 Layout.fillWidth: true
+                                                Layout.minimumWidth: 0
+                                                Layout.alignment: Qt.AlignVCenter
+                                                spacing: 1
+
+                                                Text {
+                                                    text: root.activePlayer?.trackTitle || "Untitled Track"
+                                                    font.family: root.uiFont
+                                                    font.pixelSize: 12
+                                                    font.weight: Font.DemiBold
+                                                    color: root.colText
+                                                    maximumLineCount: 1
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
+
+                                                Text {
+                                                    text: root.activePlayer?.trackArtist || "Unknown Artist"
+                                                    font.family: root.uiFont
+                                                    font.pixelSize: 10
+                                                    color: root.colSubtext
+                                                    maximumLineCount: 1
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
                                             }
                                         }
 
                                         Item { Layout.fillHeight: true }
 
-                                        // Bare Transport Controls (No boxed chrome)
+                                        // Compact Scrubber + Time
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 1
+
+                                            DashSlider {
+                                                Layout.fillWidth: true
+                                                implicitHeight: 16
+                                                value: root.mediaRatio
+                                                minValue: 0.0
+                                                maxValue: 1.0
+                                                stepSize: Math.min(0.1, 5.0 / Math.max(1, root.mediaLen))
+                                                slEnabled: (root.activePlayer?.canSeek ?? false) && Config.activeSubPanel !== "wallpapers"
+                                                accessName: "Seek track position"
+                                                onMoved: ratio => {
+                                                    if (root.activePlayer?.canSeek) {
+                                                        const target = ratio * root.mediaLen;
+                                                        root.activePlayer.position = target;
+                                                        root.mediaPos = target;
+                                                    }
+                                                }
+                                                onStepped: delta => {
+                                                    if (root.activePlayer?.canSeek) {
+                                                        const target = Math.max(0, Math.min(root.mediaLen, root.mediaPos + delta * root.mediaLen));
+                                                        root.activePlayer.position = target;
+                                                        root.mediaPos = target;
+                                                    }
+                                                }
+                                            }
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+
+                                                Text {
+                                                    text: root.formatTime(root.mediaPos)
+                                                    font.family: root.uiFont
+                                                    font.pixelSize: 10
+                                                    font.weight: Font.Medium
+                                                    font.features: ({ "tnum": 1 })
+                                                    color: root.colSubtext
+                                                }
+
+                                                Item { Layout.fillWidth: true }
+
+                                                Text {
+                                                    text: root.formatTime(root.mediaLen)
+                                                    font.family: root.uiFont
+                                                    font.pixelSize: 10
+                                                    font.weight: Font.Medium
+                                                    font.features: ({ "tnum": 1 })
+                                                    color: root.colSubtext
+                                                }
+                                            }
+                                        }
+
+                                        // Compact Transport Row
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            Layout.minimumWidth: 0
-                                            spacing: 6
+                                            spacing: 4
 
                                             Item {
-                                                implicitWidth: 26
-                                                implicitHeight: 26
-                                                Layout.leftMargin: -6
-                                                Layout.alignment: Qt.AlignVCenter
+                                                implicitWidth: 24
+                                                implicitHeight: 24
                                                 readonly property bool isOn: root.activePlayer?.shuffle || root.localShuffle
 
                                                 DashIconButton {
                                                     anchors.centerIn: parent
-                                                    implicitWidth: 26
-                                                    implicitHeight: 26
+                                                    implicitWidth: 24
+                                                    implicitHeight: 24
                                                     icon: "shuffle"
-                                                    iconSize: 15
+                                                    iconSize: 14
                                                     normalInk: parent.isOn ? root.colAccentInk : root.colSubtext
                                                     hoverInk: parent.isOn ? root.colAccentInk : root.colText
                                                     btnEnabled: root.activePlayer !== null && Config.activeSubPanel !== "wallpapers"
@@ -1756,7 +2314,7 @@ PanelWindow {
                                                     visible: parent.isOn
                                                     anchors.horizontalCenter: parent.horizontalCenter
                                                     anchors.bottom: parent.bottom
-                                                    width: 5
+                                                    width: 4
                                                     height: 2
                                                     radius: 1
                                                     color: root.colAccentInk
@@ -1766,23 +2324,20 @@ PanelWindow {
                                             Item { Layout.fillWidth: true }
 
                                             DashIconButton {
-                                                implicitWidth: 28
-                                                implicitHeight: 28
-                                                Layout.alignment: Qt.AlignVCenter
+                                                implicitWidth: 26
+                                                implicitHeight: 26
                                                 icon: "skip_previous"
-                                                iconSize: 19
+                                                iconSize: 18
                                                 normalInk: root.colText
                                                 btnEnabled: (root.activePlayer?.canGoPrevious ?? false) && Config.activeSubPanel !== "wallpapers"
                                                 accessName: "Previous Track"
                                                 onTriggered: if (root.activePlayer?.canGoPrevious) root.activePlayer.previous()
                                             }
 
-                                            // Clean Play / Pause Focal Button
                                             Rectangle {
-                                                implicitWidth: 30
-                                                implicitHeight: 30
-                                                Layout.alignment: Qt.AlignVCenter
-                                                radius: 15
+                                                implicitWidth: 32
+                                                implicitHeight: 32
+                                                radius: 16
                                                 activeFocusOnTab: (root.activePlayer !== null && Config.activeSubPanel !== "wallpapers") || activeFocus
                                                 enabled: root.activePlayer?.canTogglePlaying ?? false
                                                 opacity: enabled ? 1.0 : 0.45
@@ -1790,6 +2345,8 @@ PanelWindow {
                                                 scale: playHover.pressed ? 0.92 : 1.0
                                                 border.width: activeFocus ? 1.5 : 0
                                                 border.color: root.colText
+                                                Accessible.role: Accessible.Button
+                                                Accessible.name: root.isPlaying ? "Pause" : "Play"
                                                 Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
 
                                                 MatIcon {
@@ -1818,11 +2375,10 @@ PanelWindow {
                                             }
 
                                             DashIconButton {
-                                                implicitWidth: 28
-                                                implicitHeight: 28
-                                                Layout.alignment: Qt.AlignVCenter
+                                                implicitWidth: 26
+                                                implicitHeight: 26
                                                 icon: "skip_next"
-                                                iconSize: 19
+                                                iconSize: 18
                                                 normalInk: root.colText
                                                 btnEnabled: (root.activePlayer?.canGoNext ?? false) && Config.activeSubPanel !== "wallpapers"
                                                 accessName: "Next Track"
@@ -1832,19 +2388,17 @@ PanelWindow {
                                             Item { Layout.fillWidth: true }
 
                                             Item {
-                                                implicitWidth: 26
-                                                implicitHeight: 26
-                                                Layout.rightMargin: -5
-                                                Layout.alignment: Qt.AlignVCenter
+                                                implicitWidth: 24
+                                                implicitHeight: 24
                                                 readonly property var effLoop: root.activePlayer ? root.activePlayer.loopState : root.localRepeat
                                                 readonly property bool isOn: (effLoop !== MprisLoopState.None && effLoop !== undefined) || root.localRepeat > 0
 
                                                 DashIconButton {
                                                     anchors.centerIn: parent
-                                                    implicitWidth: 26
-                                                    implicitHeight: 26
+                                                    implicitWidth: 24
+                                                    implicitHeight: 24
                                                     icon: (parent.effLoop === MprisLoopState.Track || root.localRepeat === 2) ? "repeat_one" : "repeat"
-                                                    iconSize: 15
+                                                    iconSize: 14
                                                     normalInk: parent.isOn ? root.colAccentInk : root.colSubtext
                                                     hoverInk: parent.isOn ? root.colAccentInk : root.colText
                                                     btnEnabled: root.activePlayer !== null && Config.activeSubPanel !== "wallpapers"
@@ -1863,7 +2417,7 @@ PanelWindow {
                                                     visible: parent.isOn
                                                     anchors.horizontalCenter: parent.horizontalCenter
                                                     anchors.bottom: parent.bottom
-                                                    width: 5
+                                                    width: 4
                                                     height: 2
                                                     radius: 1
                                                     color: root.colAccentInk
@@ -1871,362 +2425,55 @@ PanelWindow {
                                             }
                                         }
                                     }
-                                }
 
-                                // Scrubber Row
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 4
+                                    // Calm Empty Media State
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        width: parent.width - 24
+                                        spacing: 4
+                                        visible: root.activePlayer === null
 
-                                    Text {
-                                        text: root.formatTime(root.mediaPos)
-                                        font.family: root.uiFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.Medium
-                                        font.features: ({ "tnum": 1 })
-                                        color: root.colSubtext
-                                    }
+                                        Rectangle {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            width: 36
+                                            height: 36
+                                            radius: 18
+                                            color: root.colElevated
 
-                                    DashSlider {
-                                        Layout.fillWidth: true
-                                        implicitHeight: 18
-                                        value: root.mediaRatio
-                                        minValue: 0.0
-                                        maxValue: 1.0
-                                        stepSize: Math.min(0.1, 5.0 / Math.max(1, root.mediaLen))
-                                        slEnabled: (root.activePlayer?.canSeek ?? false) && Config.activeSubPanel !== "wallpapers"
-                                        accessName: "Seek track position"
-                                        onMoved: ratio => {
-                                            if (root.activePlayer?.canSeek) {
-                                                const target = ratio * root.mediaLen;
-                                                root.activePlayer.position = target;
-                                                root.mediaPos = target;
+                                            MatIcon {
+                                                anchors.centerIn: parent
+                                                icon: "music_note"
+                                                size: 18
+                                                color: root.colSubtext
                                             }
                                         }
-                                        onStepped: delta => {
-                                            if (root.activePlayer?.canSeek) {
-                                                const target = Math.max(0, Math.min(root.mediaLen, root.mediaPos + delta * root.mediaLen));
-                                                root.activePlayer.position = target;
-                                                root.mediaPos = target;
-                                            }
+
+                                        Text {
+                                            text: "No active media"
+                                            font.family: root.uiFont
+                                            font.pixelSize: 12
+                                            font.weight: Font.DemiBold
+                                            color: root.colText
+                                            horizontalAlignment: Text.AlignHCenter
+                                            Layout.fillWidth: true
+                                        }
+
+                                        Text {
+                                            text: "Open a player to control"
+                                            font.family: root.uiFont
+                                            font.pixelSize: 10
+                                            color: root.colSubtext
+                                            horizontalAlignment: Text.AlignHCenter
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
                                         }
                                     }
-
-                                    Text {
-                                        text: root.formatTime(root.mediaLen)
-                                        font.family: root.uiFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.Medium
-                                        font.features: ({ "tnum": 1 })
-                                        color: root.colSubtext
-                                    }
                                 }
-                            }
-
-                            // Seamless Single-Line Idle Band (No card box)
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 16
-                                anchors.rightMargin: 16
-                                spacing: 8
-                                visible: root.activePlayer === null
-
-                                MatIcon {
-                                    icon: "music_note"
-                                    size: 16
-                                    color: root.colSubtext
-                                }
-
-                                Text {
-                                    text: "No active media"
-                                    font.family: root.uiFont
-                                    font.pixelSize: 12
-                                    font.weight: Font.Medium
-                                    color: Qt.alpha(root.colText, 0.82)
-                                    Layout.fillWidth: true
-                                }
-
-                                Text {
-                                    text: "Open a player"
-                                    font.family: root.uiFont
-                                    font.pixelSize: 11
-                                    color: root.colSubtext
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 1
-                                color: root.colHairline
                             }
                         }
 
                         // ====================================================
-                        // 3. CONNECTIVITY STRIP (WI-FI | 1px HAIRLINE | BLUETOOTH)
-                        // On-canvas cells with bare chevron (no square icon box)
-                        // ====================================================
-                        Item {
-                            id: connRow
-                            Layout.fillWidth: true
-                            implicitHeight: 62
-
-                            readonly property int halfW: Math.floor((width - 1) / 2)
-
-                            // WI-FI HALF
-                            Rectangle {
-                                id: wifiModule
-                                readonly property bool isOpen: Config.activeSubPanel === "wifi"
-                                x: 0
-                                y: 0
-                                width: connRow.halfW
-                                height: parent.height
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.Button
-                                Accessible.name: "Wi-Fi networks list"
-                                color: isOpen
-                                    ? Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.11 : 0.09)
-                                    : (wifiBodyHover.containsMouse ? Qt.alpha(root.colText, 0.04) : "transparent")
-                                border.width: activeFocus ? 1.5 : 0
-                                border.color: root.colAccentInk
-                                Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
-
-                                MouseArea {
-                                    id: wifiBodyHover
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: mouse => {
-                                        if (mouse.button === Qt.RightButton) Network.toggleWifi();
-                                        else root.toggleSubPanel("wifi");
-                                    }
-                                }
-
-                                Keys.onReturnPressed: event => { root.toggleSubPanel("wifi"); event.accepted = true; }
-                                Keys.onSpacePressed: event => { root.toggleSubPanel("wifi"); event.accepted = true; }
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 16
-                                    anchors.rightMargin: 14
-                                    anchors.topMargin: 8
-                                    anchors.bottomMargin: 8
-                                    spacing: 3
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-
-                                        MatIcon {
-                                            icon: Network.isConnected ? "wifi" : (Network.wifiEnabled ? "wifi_find" : "wifi_off")
-                                            size: 17
-                                            color: Network.isConnected ? root.colAccentInk : (Network.wifiEnabled ? root.colText : root.colSubtext)
-                                        }
-
-                                        Text {
-                                            text: "Wi-Fi"
-                                            font.family: root.uiFont
-                                            font.pixelSize: 13
-                                            font.weight: Font.DemiBold
-                                            color: root.colText
-                                            Layout.fillWidth: true
-                                        }
-
-                                        // Dedicated Switch Click Shield (does not open drawer)
-                                        Item {
-                                            implicitWidth: 40
-                                            implicitHeight: 28
-                                            Layout.rightMargin: -6
-                                            z: 2
-
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                acceptedButtons: Qt.LeftButton
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: Network.toggleWifi()
-                                            }
-
-                                            DashSwitch {
-                                                anchors.centerIn: parent
-                                                checked: Network.wifiEnabled
-                                                accessName: "Toggle Wi-Fi Radio"
-                                                onToggled: Network.toggleWifi()
-                                            }
-                                        }
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-
-                                        Text {
-                                            text: Network.isConnected
-                                                ? Network.ssid
-                                                : (Network.wifiEnabled ? "Ready to connect" : "Off")
-                                            font.family: root.uiFont
-                                            font.pixelSize: 11
-                                            font.weight: Network.isConnected ? Font.Medium : Font.Normal
-                                            color: Network.isConnected ? root.colAccentInk : root.colSubtext
-                                            elide: Text.ElideRight
-                                            Layout.fillWidth: true
-                                        }
-
-                                        // Bare Chevron (Smooth animated rotation)
-                                        MatIcon {
-                                            icon: "expand_more"
-                                            size: 16
-                                            rotation: wifiModule.isOpen ? 180 : 0
-                                            color: wifiModule.isOpen
-                                                ? root.colAccentInk
-                                                : (wifiBodyHover.containsMouse ? root.colText : root.colSubtext)
-                                            Behavior on rotation { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Center 1px vertical separator
-                            Rectangle {
-                                x: connRow.halfW
-                                y: 8
-                                width: 1
-                                height: parent.height - 16
-                                color: root.colHairline
-                            }
-
-                            // BLUETOOTH HALF
-                            Rectangle {
-                                id: btModule
-                                readonly property bool isOpen: Config.activeSubPanel === "bluetooth"
-                                x: connRow.halfW + 1
-                                y: 0
-                                width: parent.width - connRow.halfW - 1
-                                height: parent.height
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.Button
-                                Accessible.name: "Bluetooth devices list"
-                                color: isOpen
-                                    ? Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.11 : 0.09)
-                                    : (btBodyHover.containsMouse ? Qt.alpha(root.colText, 0.04) : "transparent")
-                                border.width: activeFocus ? 1.5 : 0
-                                border.color: root.colAccentInk
-                                Behavior on color { ColorAnimation { duration: 110; easing.type: Easing.OutCubic } }
-
-                                MouseArea {
-                                    id: btBodyHover
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: mouse => {
-                                        if (mouse.button === Qt.RightButton) Bluetooth.togglePower();
-                                        else root.toggleSubPanel("bluetooth");
-                                    }
-                                }
-
-                                Keys.onReturnPressed: event => { root.toggleSubPanel("bluetooth"); event.accepted = true; }
-                                Keys.onSpacePressed: event => { root.toggleSubPanel("bluetooth"); event.accepted = true; }
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 14
-                                    anchors.rightMargin: 16
-                                    anchors.topMargin: 8
-                                    anchors.bottomMargin: 8
-                                    spacing: 3
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-
-                                        MatIcon {
-                                            icon: Bluetooth.connectedDevice.length > 0
-                                                ? "bluetooth_connected"
-                                                : (Bluetooth.powered ? "bluetooth" : "bluetooth_disabled")
-                                            size: 17
-                                            color: Bluetooth.connectedDevice.length > 0
-                                                ? root.colAccentInk
-                                                : (Bluetooth.powered ? root.colText : root.colSubtext)
-                                        }
-
-                                        Text {
-                                            text: "Bluetooth"
-                                            font.family: root.uiFont
-                                            font.pixelSize: 13
-                                            font.weight: Font.DemiBold
-                                            color: root.colText
-                                            Layout.fillWidth: true
-                                        }
-
-                                        Item {
-                                            implicitWidth: 40
-                                            implicitHeight: 28
-                                            Layout.rightMargin: -6
-                                            z: 2
-
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                enabled: !Bluetooth.powerBusy
-                                                acceptedButtons: Qt.LeftButton
-                                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.WaitCursor
-                                                onClicked: Bluetooth.togglePower()
-                                            }
-
-                                            DashSwitch {
-                                                anchors.centerIn: parent
-                                                checked: Bluetooth.powered
-                                                busy: Bluetooth.powerBusy
-                                                accessName: "Toggle Bluetooth Adapter"
-                                                onToggled: Bluetooth.togglePower()
-                                            }
-                                        }
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-
-                                        Text {
-                                            text: Bluetooth.powerBusy
-                                                ? "Switching..."
-                                                : (Bluetooth.connectedDevice.length > 0
-                                                    ? Bluetooth.connectedDevice
-                                                    : (Bluetooth.powered ? "Ready" : "Off"))
-                                            font.family: root.uiFont
-                                            font.pixelSize: 11
-                                            font.weight: Bluetooth.connectedDevice.length > 0 ? Font.Medium : Font.Normal
-                                            color: Bluetooth.connectedDevice.length > 0 ? root.colAccentInk : root.colSubtext
-                                            elide: Text.ElideRight
-                                            Layout.fillWidth: true
-                                        }
-
-                                        // Bare Chevron (Smooth animated rotation)
-                                        MatIcon {
-                                            icon: "expand_more"
-                                            size: 16
-                                            rotation: btModule.isOpen ? 180 : 0
-                                            color: btModule.isOpen
-                                                ? root.colAccentInk
-                                                : (btBodyHover.containsMouse ? root.colText : root.colSubtext)
-                                            Behavior on rotation { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 1
-                                color: root.colHairline
-                            }
-                        }
-
-                        // ====================================================
-                        // WI-FI DROPDOWN DRAWER (Flat On-Canvas Hairlines + Inline Prompt)
+                        // WI-FI DROPDOWN DRAWER (Sora Bento Card)
                         // ====================================================
                         Item {
                             id: wifiDrawerWrap
@@ -2250,7 +2497,8 @@ PanelWindow {
                                 anchors.right: parent.right
                                 anchors.top: parent.top
                                 implicitHeight: wifiDrawerCol.implicitHeight + 18
-                                color: root.colDrawerTint
+                                radius: 14
+                                color: root.colSurface
 
                                 readonly property var activeAp: {
                                     if (!Network.wifiEnabled || !Network.isConnected || Network.networkType !== "wifi") return null;
@@ -3017,33 +3265,13 @@ PanelWindow {
                                             }
                                         }
 
-                                        // Minimal overflow scrollbar
-                                        Rectangle {
-                                            visible: wifiListWrap.hasOverflow
-                                            anchors.right: parent.right
-                                            anchors.rightMargin: 0
-                                            y: wifiList.visibleArea.yPosition * wifiListWrap.height + 2
-                                            width: 3
-                                            height: Math.max(20, wifiList.visibleArea.heightRatio * wifiListWrap.height - 4)
-                                            radius: 1.5
-                                            color: Qt.alpha(root.colText, wifiListHover.hovered ? 0.45 : 0.24)
-                                            z: 10
-                                        }
                                     }
-                                }
-
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    height: 1
-                                    color: root.colHairline
                                 }
                             }
                         }
 
                         // ====================================================
-                        // BLUETOOTH DROPDOWN DRAWER (Flat On-Canvas Hairlines)
+                        // BLUETOOTH DROPDOWN DRAWER (Sora Bento Card)
                         // ====================================================
                         Item {
                             id: btDrawerWrap
@@ -3067,7 +3295,8 @@ PanelWindow {
                                 anchors.right: parent.right
                                 anchors.top: parent.top
                                 implicitHeight: btDrawerCol.implicitHeight + 18
-                                color: root.colDrawerTint
+                                radius: 14
+                                color: root.colSurface
 
                                 readonly property var connectedDevs: Bluetooth.powered
                                     ? Bluetooth.devices.filter(d => d.connected)
@@ -3636,322 +3865,223 @@ PanelWindow {
                                             }
                                         }
 
-                                        // Minimal overflow scrollbar
-                                        Rectangle {
-                                            visible: btListWrap.hasOverflow
-                                            anchors.right: parent.right
-                                            anchors.rightMargin: 0
-                                            y: btList.visibleArea.yPosition * btListWrap.height + 2
-                                            width: 3
-                                            height: Math.max(20, btList.visibleArea.heightRatio * btListWrap.height - 4)
-                                            radius: 1.5
-                                            color: Qt.alpha(root.colText, btListHover.hovered ? 0.45 : 0.24)
-                                            z: 10
+                                    }
+                                }
+                            }
+                        }
+
+                        // ====================================================
+                        // 3. MIDDLE CONTROL DECK: PILL SLIDERS + UTILITY TILES
+                        // ====================================================
+                        RowLayout {
+                            id: ccMidRow
+                            Layout.fillWidth: true
+                            visible: Config.activeSubPanel !== "wallpapers"
+                            spacing: 8
+
+                            // Left Column (~236px): Thick iOS Control Center Pill Sliders
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 236
+                                spacing: 6
+
+                                ControlPillSlider {
+                                    implicitHeight: 40
+                                    icon: "light_mode"
+                                    label: "Brightness"
+                                    value: Brightness.brightness
+                                    minValue: 0.05
+                                    maxValue: 1.0
+                                    stepSize: 0.05
+                                    valueText: `${Math.round(Brightness.brightness * 100)}%`
+                                    accessName: "Display Brightness"
+                                    onMoved: v => Brightness.setBrightness(v * 100)
+                                    onStepped: d => Brightness.setBrightness((Brightness.brightness + d) * 100)
+                                }
+
+                                ControlPillSlider {
+                                    implicitHeight: 40
+                                    iconClickable: true
+                                    hasDrawer: true
+                                    drawerOpen: Config.activeSubPanel === "audio_out"
+                                    icon: AudioService.muted
+                                        ? "volume_off"
+                                        : (AudioService.volume > 0.5 ? "volume_up" : "volume_down")
+                                    label: AudioService.nodeLabel(AudioService.sink) ? `Output · ${AudioService.nodeLabel(AudioService.sink)}` : "Output"
+                                    value: AudioService.volume
+                                    minValue: 0.0
+                                    maxValue: 1.0
+                                    stepSize: 0.05
+                                    muted: AudioService.muted
+                                    valueText: AudioService.muted ? "Muted" : `${Math.round(AudioService.volume * 100)}%`
+                                    accessName: "Output Volume"
+                                    iconAccessName: AudioService.muted ? "Unmute Speaker Output" : "Mute Speaker Output"
+                                    drawerAccessName: `Switch Output (${AudioService.nodeLabel(AudioService.sink)})`
+                                    onMoved: v => AudioService.setVolume(v)
+                                    onStepped: d => AudioService.changeVolume(d)
+                                    onIconTriggered: AudioService.toggleMute()
+                                    onDrawerTriggered: root.toggleSubPanel("audio_out")
+                                }
+
+                                ControlPillSlider {
+                                    implicitHeight: 36
+                                    iconClickable: true
+                                    hasDrawer: true
+                                    drawerOpen: Config.activeSubPanel === "audio_in"
+                                    icon: AudioService.micMuted ? "mic_off" : "mic"
+                                    label: AudioService.nodeLabel(AudioService.source) ? `Mic · ${AudioService.nodeLabel(AudioService.source)}` : "Mic"
+                                    value: AudioService.micVolume
+                                    minValue: 0.0
+                                    maxValue: 1.0
+                                    stepSize: 0.05
+                                    muted: AudioService.micMuted
+                                    valueText: AudioService.micMuted ? "Muted" : `${Math.round(AudioService.micVolume * 100)}%`
+                                    accessName: "Microphone Level"
+                                    iconAccessName: AudioService.micMuted ? "Unmute Microphone" : "Mute Microphone"
+                                    drawerAccessName: `Switch Mic (${AudioService.nodeLabel(AudioService.source)})`
+                                    onMoved: v => AudioService.setMicVolume(v)
+                                    onStepped: d => AudioService.changeMicVolume(d)
+                                    onIconTriggered: AudioService.toggleMicMute()
+                                    onDrawerTriggered: root.toggleSubPanel("audio_in")
+                                }
+                            }
+
+                            // Right Column (144px): 2x2 Tactile Utility Tile Grid
+                            GridLayout {
+                                Layout.fillWidth: false
+                                Layout.preferredWidth: 144
+                                columns: 2
+                                rows: 2
+                                columnSpacing: 6
+                                rowSpacing: 6
+
+                                ControlActionTile {
+                                    compact: true
+                                    icon: "nightlight"
+                                    label: "Night"
+                                    active: Config.nightLightEnabled
+                                    accessName: "Toggle Night Light"
+                                    onTriggered: Config.toggleNightLight()
+                                }
+
+                                ControlActionTile {
+                                    compact: true
+                                    icon: "coffee"
+                                    label: "Awake"
+                                    active: Config.caffeineEnabled
+                                    accessName: "Toggle Keep Awake"
+                                    onTriggered: Config.toggleCaffeine()
+                                }
+
+                                ControlActionTile {
+                                    compact: true
+                                    icon: "sports_esports"
+                                    label: "Game"
+                                    active: Config.gameModeEnabled
+                                    accessName: "Toggle Game Mode"
+                                    onTriggered: {
+                                        const enabling = !Config.gameModeEnabled;
+                                        if (enabling) {
+                                            Config.preGamePowerProfile = PowerService.activeProfile || "balanced";
+                                            PowerService.setProfile("performance");
+                                        } else {
+                                            PowerService.setProfile(Config.preGamePowerProfile || "balanced");
                                         }
+                                        Config.toggleGameMode();
                                     }
                                 }
 
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    height: 1
-                                    color: root.colHairline
+                                ControlActionTile {
+                                    compact: true
+                                    icon: "lock"
+                                    label: "Lock"
+                                    accessName: "Lock Screen"
+                                    onTriggered: Config.lockScreen()
                                 }
                             }
                         }
 
-                        // ====================================================
-                        // 4. QUICK MODES STRIP (DND | NIGHT LIGHT | KEEP AWAKE)
-                        // On-canvas cells without separate floating box chrome
-                        // ====================================================
-                        Item {
-                            id: modesStrip
+                        // Expandable Audio Device Drawers (Full-width below middle deck)
+                        Rectangle {
+                            id: audioOutDrawerCard
                             Layout.fillWidth: true
-                            implicitHeight: 38
+                            visible: Config.activeSubPanel === "audio_out" && ccMidRow.visible
+                            implicitHeight: visible ? (audioOutDrawer.implicitHeight + 12) : 0
+                            radius: 14
+                            color: root.colSurface
 
-                            readonly property int cellW: Math.floor((width - 2) / 3)
-
-                            ModeCell {
-                                x: 0
-                                y: 0
-                                width: modesStrip.cellW
-                                height: parent.height
-                                icon: "notifications"
-                                activeIcon: "notifications_off"
-                                label: "Do Not Disturb"
-                                checked: Config.dndEnabled
-                                onTriggered: Config.dndEnabled = !Config.dndEnabled
-                            }
-
-                            Rectangle {
-                                x: modesStrip.cellW
-                                y: 8
-                                width: 1
-                                height: parent.height - 16
-                                color: root.colHairline
-                            }
-
-                            ModeCell {
-                                x: modesStrip.cellW + 1
-                                y: 0
-                                width: modesStrip.cellW
-                                height: parent.height
-                                icon: "nightlight"
-                                label: "Night Light"
-                                checked: Config.nightLightEnabled
-                                onTriggered: Config.toggleNightLight()
-                            }
-
-                            Rectangle {
-                                x: (modesStrip.cellW * 2) + 1
-                                y: 8
-                                width: 1
-                                height: parent.height - 16
-                                color: root.colHairline
-                            }
-
-                            ModeCell {
-                                x: (modesStrip.cellW * 2) + 2
-                                y: 0
-                                width: parent.width - ((modesStrip.cellW * 2) + 2)
-                                height: parent.height
-                                icon: "coffee"
-                                label: "Keep Awake"
-                                checked: Config.caffeineEnabled
-                                onTriggered: Config.toggleCaffeine()
-                            }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 1
-                                color: root.colHairline
-                            }
-                        }
-
-                        // ====================================================
-                        // 5 & 6. AUDIO & DISPLAY LEVELS (NAKED ON MAIN CANVAS)
-                        // Zero inner card background; flows cleanly with 1px rules
-                        // ====================================================
-                        Item {
-                            id: levelsSection
-                            Layout.fillWidth: true
-                            implicitHeight: levelsCol.implicitHeight + 22
-
-                            ColumnLayout {
-                                id: levelsCol
+                            AudioDeviceDrawer {
+                                id: audioOutDrawer
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.top: parent.top
-                                anchors.leftMargin: 16
-                                anchors.rightMargin: 16
-                                anchors.topMargin: 11
-                                spacing: 6
-
-                                // Output Volume
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    DashIconButton {
-                                        implicitWidth: 26
-                                        implicitHeight: 26
-                                        Layout.leftMargin: -4
-                                        icon: AudioService.muted
-                                            ? "volume_off"
-                                            : (AudioService.volume > 0.5 ? "volume_up" : "volume_down")
-                                        iconSize: 17
-                                        normalInk: AudioService.muted ? root.colUrgentInk : root.colText
-                                        hoverInk: AudioService.muted ? root.colUrgentInk : root.colAccentInk
-                                        destructive: AudioService.muted
-                                        accessName: "Mute Speaker Output"
-                                        onTriggered: AudioService.toggleMute()
-                                    }
-
-                                    AudioSwitchButton {
-                                        label: "Output"
-                                        panelKey: "audio_out"
-                                        muted: AudioService.muted
-                                        deviceName: AudioService.nodeLabel(AudioService.sink)
-                                    }
-
-                                    DashSlider {
-                                        Layout.fillWidth: true
-                                        value: AudioService.volume
-                                        minValue: 0.0
-                                        maxValue: 1.0
-                                        stepSize: 0.05
-                                        muted: AudioService.muted
-                                        accessName: "Output Volume"
-                                        onMoved: v => AudioService.setVolume(v)
-                                        onStepped: d => AudioService.changeVolume(d)
-                                    }
-
-                                    Text {
-                                        text: AudioService.muted ? "Muted" : `${Math.round(AudioService.volume * 100)}%`
-                                        font.family: root.uiFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                        font.features: ({ "tnum": 1 })
-                                        color: AudioService.muted ? root.colUrgentInk : root.colText
-                                        Layout.preferredWidth: 38
-                                        horizontalAlignment: Text.AlignRight
-                                    }
-                                }
-
-                                AudioDeviceDrawer {
-                                    open: Config.activeSubPanel === "audio_out"
-                                    emptyText: "No output devices found"
-                                    devices: AudioService.sinks
-                                    currentDevice: AudioService.sink
-                                    onDeviceSelected: node => AudioService.setDefaultSink(node)
-                                }
-
-                                // Microphone
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    DashIconButton {
-                                        implicitWidth: 26
-                                        implicitHeight: 26
-                                        Layout.leftMargin: -4
-                                        icon: AudioService.micMuted ? "mic_off" : "mic"
-                                        iconSize: 17
-                                        normalInk: AudioService.micMuted ? root.colUrgentInk : root.colText
-                                        hoverInk: AudioService.micMuted ? root.colUrgentInk : root.colAccentInk
-                                        destructive: AudioService.micMuted
-                                        accessName: "Mute Microphone"
-                                        onTriggered: AudioService.toggleMicMute()
-                                    }
-
-                                    AudioSwitchButton {
-                                        label: "Mic"
-                                        panelKey: "audio_in"
-                                        muted: AudioService.micMuted
-                                        deviceName: AudioService.nodeLabel(AudioService.source)
-                                    }
-
-                                    DashSlider {
-                                        Layout.fillWidth: true
-                                        value: AudioService.micVolume
-                                        minValue: 0.0
-                                        maxValue: 1.0
-                                        stepSize: 0.05
-                                        muted: AudioService.micMuted
-                                        accessName: "Microphone Level"
-                                        onMoved: v => AudioService.setMicVolume(v)
-                                        onStepped: d => AudioService.changeMicVolume(d)
-                                    }
-
-                                    Text {
-                                        text: AudioService.micMuted ? "Muted" : `${Math.round(AudioService.micVolume * 100)}%`
-                                        font.family: root.uiFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                        font.features: ({ "tnum": 1 })
-                                        color: AudioService.micMuted ? root.colUrgentInk : root.colText
-                                        Layout.preferredWidth: 38
-                                        horizontalAlignment: Text.AlignRight
-                                    }
-                                }
-
-                                AudioDeviceDrawer {
-                                    open: Config.activeSubPanel === "audio_in"
-                                    emptyText: "No input devices found"
-                                    devices: AudioService.sources
-                                    currentDevice: AudioService.source
-                                    onDeviceSelected: node => AudioService.setDefaultSource(node)
-                                }
-
-                                // Subtle vertical breathing gap between Audio cluster & Display brightness
-                                Item {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 4
-                                }
-
-                                // Display Brightness
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    Item {
-                                        implicitWidth: 26
-                                        implicitHeight: 26
-                                        Layout.leftMargin: -4
-
-                                        MatIcon {
-                                            anchors.centerIn: parent
-                                            icon: "light_mode"
-                                            size: 17
-                                            color: root.colText
-                                        }
-                                    }
-
-                                    Text {
-                                        text: "Brightness"
-                                        font.family: root.uiFont
-                                        font.pixelSize: 12
-                                        font.weight: Font.Medium
-                                        color: root.colText
-                                        Layout.preferredWidth: 66
-                                    }
-
-                                    DashSlider {
-                                        Layout.fillWidth: true
-                                        value: Brightness.brightness
-                                        minValue: 0.05
-                                        maxValue: 1.0
-                                        stepSize: 0.05
-                                        accessName: "Display Brightness"
-                                        onMoved: v => Brightness.setBrightness(v * 100)
-                                        onStepped: d => Brightness.setBrightness((Brightness.brightness + d) * 100)
-                                    }
-
-                                    Text {
-                                        text: `${Math.round(Brightness.brightness * 100)}%`
-                                        font.family: root.uiFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                        font.features: ({ "tnum": 1 })
-                                        color: root.colText
-                                        Layout.preferredWidth: 38
-                                        horizontalAlignment: Text.AlignRight
-                                    }
-                                }
+                                anchors.margins: 6
+                                open: Config.activeSubPanel === "audio_out"
+                                emptyText: "No output devices found"
+                                devices: AudioService.sinks
+                                currentDevice: AudioService.sink
+                                onDeviceSelected: node => AudioService.setDefaultSink(node)
                             }
+                        }
 
-                            Rectangle {
-                                anchors.bottom: parent.bottom
+                        Rectangle {
+                            id: audioInDrawerCard
+                            Layout.fillWidth: true
+                            visible: Config.activeSubPanel === "audio_in" && ccMidRow.visible
+                            implicitHeight: visible ? (audioInDrawer.implicitHeight + 12) : 0
+                            radius: 14
+                            color: root.colSurface
+
+                            AudioDeviceDrawer {
+                                id: audioInDrawer
                                 anchors.left: parent.left
                                 anchors.right: parent.right
-                                height: 1
-                                color: root.colHairline
+                                anchors.top: parent.top
+                                anchors.margins: 6
+                                open: Config.activeSubPanel === "audio_in"
+                                emptyText: "No input devices found"
+                                devices: AudioService.sources
+                                currentDevice: AudioService.source
+                                onDeviceSelected: node => AudioService.setDefaultSource(node)
                             }
                         }
 
                         // ====================================================
-                        // 7. NOTIFICATIONS (FLAT HEADLINE-FIRST LIST + ISOLATED SCROLL)
-                        // Zero left accent bars, zero icon eyebrows, zero tinted slabs
+                        // 4. NOTIFICATIONS (Sora Bento Card)
                         // ====================================================
+                        Rectangle {
+                            id: notifCard
+                            Layout.fillWidth: true
+                            implicitHeight: notifSection.implicitHeight + 20
+                            radius: 14
+                            color: root.colSurface
+
+                            RectangularShadow {
+                                visible: !Theme.isDarkMode
+                                anchors.fill: parent
+                                radius: parent.radius
+                                blur: 12
+                                spread: 0.0
+                                offset.x: 0
+                                offset.y: 2
+                                color: Qt.alpha("#000000", 0.08)
+                                z: -1
+                            }
+
                         ColumnLayout {
                             id: notifSection
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 16
-                            Layout.rightMargin: 16
-                            Layout.topMargin: 10
-                            Layout.bottomMargin: 12
+                            anchors.fill: parent
+                            anchors.leftMargin: 16
+                            anchors.rightMargin: 16
+                            anchors.topMargin: 10
+                            anchors.bottomMargin: 10
                             spacing: 6
 
                             property real collapsedHeight: Config.notifHistory.length === 0 ? 0 : (Config.notifHistory.length === 1 ? 56 : 104)
-                            readonly property int nonListAboveHeight: heroBanner.implicitHeight
-                                + (mediaStage.visible ? mediaStage.implicitHeight : 0)
-                                + connRow.implicitHeight
-                                + modesStrip.implicitHeight
-                                + levelsSection.implicitHeight
-                                + 86
+                            readonly property int nonListAboveHeight: heroBanner.implicitHeight + 8
+                                + (ccTopRow.visible ? ccTopRow.implicitHeight + 8 : 0)
+                                + (ccMidRow.visible ? ccMidRow.implicitHeight + 8 : 0)
+                                + 80
                             readonly property int maxExpandedHeight: Math.min(252, Math.max(128, dashCard.maxCardHeight - nonListAboveHeight))
 
                             function syncCollapsedHeight(): void {
@@ -4209,6 +4339,21 @@ PanelWindow {
 
                                         HoverHandler { id: notifHover }
 
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (Config.focusNotificationTarget(
+                                                    histCard.modelData.appName || "",
+                                                    histCard.modelData.desktopEntry || "",
+                                                    histCard.titleText || ""
+                                                )) {
+                                                    Config.dashboardPinned = false;
+                                                    Config.dashboardOpen = false;
+                                                }
+                                            }
+                                        }
+
                                         Rectangle {
                                             anchors.fill: parent
                                             radius: 4
@@ -4441,22 +4586,13 @@ PanelWindow {
                                 Keys.onSpacePressed: event => { root.showAllNotifs = !root.showAllNotifs; event.accepted = true; }
                             }
                         }
-                    }
-
-                    // Subtle Overflow Scrollbar
-                    Rectangle {
-                        visible: bodyFlick.contentHeight > bodyFlick.height + 2
-                        anchors.right: parent.right
-                        anchors.rightMargin: 4
-                        y: bodyFlick.visibleArea.yPosition * bodyFlick.height + 4
-                        width: 3
-                        height: Math.max(24, bodyFlick.visibleArea.heightRatio * bodyFlick.height - 8)
-                        radius: 1.5
-                        color: Qt.alpha(root.colText, 0.30)
-                        z: 10
+                        }
                     }
                 }
             }
+            }
+            }
+        }
         }
     }
 }

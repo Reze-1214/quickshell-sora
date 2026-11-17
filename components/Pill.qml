@@ -12,7 +12,7 @@ Rectangle {
     property bool interactive: false
     property bool active: false
     property bool hasShadow: false
-    property color baseColor: active ? Theme.primary : Theme.surfaceContainer
+    property color baseColor: active ? Theme.primary : Theme.surface
     property color hoverColor: active ? Theme.primary : Theme.surfaceContainerHigh
 
     signal clicked(var mouse)
@@ -33,14 +33,14 @@ Rectangle {
     scale: interactive && mouseArea.pressed ? 0.96 : 1.0
 
     RectangularShadow {
-        visible: root.hasShadow
+        visible: !Theme.isDarkMode && root.hasShadow
         anchors.fill: root
         radius: root.radius
-        blur: 8
+        blur: 10
         spread: 0.0
         offset.x: 0
         offset.y: 2
-        color: Qt.alpha("#000000", Theme.isDarkMode ? 0.38 : 0.08)
+        color: Qt.alpha("#000000", 0.10)
         z: -1
     }
 

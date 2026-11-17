@@ -84,7 +84,7 @@
 
 #### Typography & Icon Fonts
 - [ttf-material-symbols-variable](https://github.com/google/material-design-icons) (Google Material Symbols Outlined)
-- [inter-font](https://github.com/rsms/inter) (atau `ttf-inter` untuk UI typography)
+- [inter-font](https://github.com/rsms/inter) (or `ttf-inter` for UI typography)
 - [ttf-jetbrains-mono-nerd](https://github.com/ryanoasis/nerd-fonts) (Monospace & hardware telemetry)
 
 ---

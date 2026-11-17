@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sora Ultra HD Screenshot Script
-# Menyimpan tangkapan layar dengan 2x/3x supersampling agar tajam dan tidak pecah
+# Saves screenshots with 2x/3x supersampling for sharp, crisp output
 
 SAVE_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 mkdir -p "$SAVE_DIR"
@@ -54,7 +54,7 @@ case "$MODE" in
     region|*)
         GEOMETRY=$(slurp -d 2>/dev/null)
         if [ -z "$GEOMETRY" ]; then
-            exit 0 # Dibatalkan pengguna
+            exit 0 # Cancelled by user
         fi
         grim -s "$SCALE" -g "$GEOMETRY" "$FILENAME"
         ;;
@@ -66,6 +66,6 @@ if [ -f "$FILENAME" ] && [ -s "$FILENAME" ]; then
     notify-send -a "Sora Screenshot" \
         -i "$FILENAME" \
         -h string:image-path:"$FILENAME" \
-        "Screenshot Tersimpan (HD ${SCALE}x)" \
-        "Disimpan di ~/Pictures/Screenshots dan disalin ke clipboard" & disown
+        "Screenshot Saved (HD ${SCALE}x)" \
+        "Saved to ~/Pictures/Screenshots and copied to clipboard" & disown
 fi

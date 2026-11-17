@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.SystemTray
@@ -22,9 +23,9 @@ Pill {
 
             required property SystemTrayItem modelData
 
-            implicitWidth: 24
-            implicitHeight: 24
-            radius: 12
+            implicitWidth: Math.min(24, Math.max(18, Config.pillHeight - 4))
+            implicitHeight: implicitWidth
+            radius: Math.round(implicitWidth / 2)
             color: trayMouse.containsMouse ? Theme.surfaceContainerHigh : "transparent"
 
             transformOrigin: Item.Center
@@ -35,11 +36,20 @@ Pill {
             }
 
             IconImage {
+                id: trayIconImg
                 anchors.centerIn: parent
                 implicitWidth: 15
                 implicitHeight: 15
                 asynchronous: true
                 source: Config.resolveIcon(trayEntry.modelData.icon, "application-x-executable")
+                layer.enabled: !Theme.isDarkMode
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: Qt.alpha("#000000", 0.65)
+                    shadowBlur: 0.22
+                    shadowHorizontalOffset: 0
+                    shadowVerticalOffset: 0.5
+                }
             }
 
             MouseArea {
@@ -50,18 +60,7 @@ Pill {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: mouse => {
                     if (mouse.button === Qt.LeftButton) {
-                        const idStr = (trayEntry.modelData.id ?? "").toLowerCase();
-                        if (idStr.includes("spotify")) {
-                            Quickshell.execDetached([
-                                "hyprctl", "repl", 'local fn = require("utils.functions"); fn.toggle("music")()'
-                            ]);
-                        } else if (idStr.includes("discord")) {
-                            Quickshell.execDetached([
-                                "hyprctl", "repl", 'local fn = require("utils.functions"); fn.toggle("communication")()'
-                            ]);
-                        } else {
-                            trayEntry.modelData.activate();
-                        }
+                        trayEntry.modelData.activate();
                     } else {
                         const isSame = Config.trayPopoverOpen && Config.activeTrayItem === trayEntry.modelData;
                         Config.activeTrayItem = trayEntry.modelData;

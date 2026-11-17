@@ -42,16 +42,30 @@ Item {
         // ====================================================================
         // 1. LEFT CARD (204 x 298): UNIFIED MEMORY, ZRAM & NETWORK
         // ====================================================================
-        Rectangle {
-            id: leftCard
+        Item {
             Layout.preferredWidth: 204
             Layout.minimumWidth: 204
             Layout.maximumWidth: 204
             Layout.fillWidth: false
             Layout.fillHeight: true
-            radius: 10
-            color: Theme.surface
-            clip: true
+
+            RectangularShadow {
+                visible: !Theme.isDarkMode
+                anchors.fill: leftCard
+                radius: leftCard.radius
+                blur: 12
+                spread: 0.0
+                offset.x: 0
+                offset.y: 2
+                color: Qt.alpha("#000000", 0.10)
+            }
+
+            Rectangle {
+                id: leftCard
+                anchors.fill: parent
+                radius: 10
+                color: Theme.surface
+                clip: true
 
             // Subtle themed wallpaper backdrop (keeps telemetry legible in both themes)
             Image {
@@ -449,6 +463,7 @@ Item {
                 }
             }
         }
+        }
 
         // ====================================================================
         // 2. RIGHT CONSOLE (456px) - 4 DISCRETE 2x2 BENTO TILES
@@ -467,13 +482,27 @@ Item {
                 spacing: 8
 
                 // TILE 3: CPU COMPUTE
-                Rectangle {
-                    id: cpuCard
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: 10
-                    color: Theme.surface
-                    clip: true
+
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: cpuCard
+                        radius: cpuCard.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.10)
+                    }
+
+                    Rectangle {
+                        id: cpuCard
+                        anchors.fill: parent
+                        radius: 10
+                        color: Theme.surface
+                        clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -642,15 +671,30 @@ Item {
                         }
                     }
                 }
+                }
 
                 // TILE 4: COOLING & THERMAL
-                Rectangle {
-                    id: fanCard
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: 10
-                    color: Theme.surface
-                    clip: true
+
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: fanCard
+                        radius: fanCard.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.10)
+                    }
+
+                    Rectangle {
+                        id: fanCard
+                        anchors.fill: parent
+                        radius: 10
+                        color: Theme.surface
+                        clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -824,6 +868,7 @@ Item {
                         }
                     }
                 }
+                }
             }
 
             // ----------------------------------------------------------------
@@ -835,13 +880,27 @@ Item {
                 spacing: 8
 
                 // TILE 5: GRAPHICS ENGINE
-                Rectangle {
-                    id: gpuCard
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: 10
-                    color: Theme.surface
-                    clip: true
+
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: gpuCard
+                        radius: gpuCard.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.10)
+                    }
+
+                    Rectangle {
+                        id: gpuCard
+                        anchors.fill: parent
+                        radius: 10
+                        color: Theme.surface
+                        clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -1009,15 +1068,30 @@ Item {
                         }
                     }
                 }
+                }
 
                 // TILE 6: ROOT STORAGE
-                Rectangle {
-                    id: ssdCard
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: 10
-                    color: Theme.surface
-                    clip: true
+
+                    RectangularShadow {
+                        visible: !Theme.isDarkMode
+                        anchors.fill: ssdCard
+                        radius: ssdCard.radius
+                        blur: 12
+                        spread: 0.0
+                        offset.x: 0
+                        offset.y: 2
+                        color: Qt.alpha("#000000", 0.10)
+                    }
+
+                    Rectangle {
+                        id: ssdCard
+                        anchors.fill: parent
+                        radius: 10
+                        color: Theme.surface
+                        clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -1182,6 +1256,7 @@ Item {
                             }
                         }
                     }
+                }
                 }
             }
         }

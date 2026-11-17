@@ -7,12 +7,13 @@ import "../components"
 Rectangle {
     id: root
 
-    implicitWidth: Math.round(row.implicitWidth + 14)
+    implicitWidth: Math.round(row.implicitWidth + 16)
     implicitHeight: Config.pillHeight
+    onImplicitWidthChanged: Config.clockPillWidth = implicitWidth
+    Component.onCompleted: Config.clockPillWidth = implicitWidth
     radius: Config.pillRadius
-    color: Config.dashboardOpen ? Theme.primary : Theme.surface
-    border.width: Config.dashboardOpen ? 1 : 0
-    border.color: Theme.primary
+    color: Config.profilePopoverOpen ? Theme.primary : Qt.alpha(Theme.surface, Theme.barOpacity)
+    border.width: 0
     border.pixelAligned: true
 
     transformOrigin: Item.Center
@@ -28,14 +29,14 @@ Rectangle {
     RowLayout {
         id: row
         anchors.centerIn: parent
-        spacing: 7
+        spacing: 6
 
-        // Crisp circular badge on the left (matching Image 2's "Contact" pill with inner white circle)
+        // Crisp circular badge on the left
         Rectangle {
             implicitWidth: 20
             implicitHeight: 20
             radius: 10
-                    color: Config.dashboardOpen ? Theme.onPrimary : Theme.primary
+            color: Config.profilePopoverOpen ? Theme.onPrimary : Theme.primary
 
             MatIcon {
                 anchors.centerIn: parent
@@ -44,7 +45,7 @@ Rectangle {
                     : (Config.notifHistory.length > 0 ? "notifications_unread" : "schedule")
                 size: 12
                 fill: 1.0
-                color: Config.dashboardOpen ? Theme.primary : Theme.onPrimary
+                color: Config.profilePopoverOpen ? Theme.primary : Theme.onPrimary
             }
         }
 
@@ -55,22 +56,8 @@ Rectangle {
             font.weight: Font.Medium
             font.hintingPreference: Theme.fontHinting
             renderType: Theme.textRenderType
-            color: Config.dashboardOpen ? Theme.onPrimary : Theme.text
+            color: Config.profilePopoverOpen ? Theme.onPrimary : Theme.text
         }
-
-        Text {
-            text: Qt.formatDateTime(sysClock.date, "dd MMM")
-            font.family: Theme.fontFamily
-            font.pixelSize: 10
-            font.hintingPreference: Theme.fontHinting
-            renderType: Theme.textRenderType
-            color: Config.dashboardOpen ? Theme.onPrimary : Theme.subtext
-        }
-    }
-
-    HoverHandler {
-        id: clockHover
-        onHoveredChanged: Config.dashboardBarHovered = hovered
     }
 
     MouseArea {
@@ -82,7 +69,7 @@ Rectangle {
             if (mouse.button === Qt.RightButton) {
                 Config.dndEnabled = !Config.dndEnabled;
             } else {
-                Config.toggleDashboard();
+                Config.toggleProfilePopover();
             }
         }
     }

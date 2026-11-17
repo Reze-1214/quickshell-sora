@@ -10,10 +10,11 @@ Singleton {
     // Global UI States
     property bool dashboardOpen: false
     property bool dashboardBarHovered: false
+    property bool dashboardEdgeHovered: false
     property bool dashboardCardHovered: false
     property bool dashboardPinned: false
     property bool dashboardHoldOpen: false
-    readonly property bool isDashboardActive: dashboardBarHovered || dashboardCardHovered || dashboardPinned || dashboardHoldOpen
+    readonly property bool isDashboardActive: dashboardBarHovered || dashboardEdgeHovered || dashboardCardHovered || dashboardPinned || dashboardHoldOpen
 
     onIsDashboardActiveChanged: {
         if (isDashboardActive) {
@@ -29,7 +30,7 @@ Singleton {
         if (dashboardOpen) {
             dashboardOpenTimer.stop();
             dashboardCloseTimer.stop();
-            if (!dashboardBarHovered && !dashboardCardHovered) {
+            if (!dashboardBarHovered && !dashboardEdgeHovered && !dashboardCardHovered) {
                 dashboardPinned = true;
             }
         } else {
@@ -43,7 +44,7 @@ Singleton {
 
     Timer {
         id: dashboardOpenTimer
-        interval: 90
+        interval: 40
         onTriggered: {
             if (!root.dashboardOpen) {
                 root.batteryPopoverOpen = false;
@@ -58,7 +59,7 @@ Singleton {
 
     Timer {
         id: dashboardCloseTimer
-        interval: 260
+        interval: 340
         onTriggered: {
             root.dashboardOpen = false;
             root.dashboardPinned = false;
@@ -67,15 +68,38 @@ Singleton {
     property bool launcherOpen: false
     property bool powerMenuOpen: false
     property bool wallpaperPickerOpen: false
+    property bool lockScreenOpen: false
+
+    function lockScreen(): void {
+        closeAllOverlays();
+        lockScreenOpen = true;
+    }
     property bool batteryPopoverOpen: false
     property bool osdVisible: false
     property bool volumeOsdOpen: false
     property bool dndEnabled: false
     property bool nightLightEnabled: false
     property bool caffeineEnabled: false
+    property bool gameModeEnabled: false
+    property string preGamePowerProfile: "balanced"
 
     function toggleCaffeine(): void {
         caffeineEnabled = !caffeineEnabled;
+    }
+
+    function toggleGameMode(): void {
+        gameModeEnabled = !gameModeEnabled;
+        if (gameModeEnabled) {
+            Quickshell.execDetached([
+                "sh", "-c",
+                "hyprctl --batch 'keyword animations:enabled 0; keyword decoration:blur:enabled 0; keyword decoration:shadow:enabled 0' >/dev/null 2>&1; pgrep -x gamemoded >/dev/null || (gamemoded -d >/dev/null 2>&1 &)"
+            ]);
+        } else {
+            Quickshell.execDetached([
+                "sh", "-c",
+                "hyprctl --batch 'keyword animations:enabled 1; keyword decoration:blur:enabled 1; keyword decoration:shadow:enabled 1' >/dev/null 2>&1"
+            ]);
+        }
     }
 
     function toggleNightLight(): void {
@@ -96,12 +120,21 @@ Singleton {
         }
     }
 
+    Process {
+        id: gameModeCheckProc
+        command: ["sh", "-c", "hyprctl -j getoption animations:enabled 2>/dev/null | jq -e '.int == 0' >/dev/null 2>&1"]
+        running: true
+        onExited: exitCode => {
+            root.gameModeEnabled = (exitCode === 0);
+        }
+    }
+
     // Workspace Hover Status Preview
     property string workspaceHoverInfo: ""
     property string workspaceHoverIcon: ""
 
-    // Bottom Dock State (Default ada, auto-hide saat fullscreen, dapat di-override SUPER+B)
-    property bool enableDock: true
+    // Bottom Dock State (Dinonaktifkan default, tetap dapat di-toggle manual via SUPER+B)
+    property bool enableDock: false
     property bool dockFullscreenOverride: false
     property bool dockPinned: false
 
@@ -348,16 +381,100 @@ Singleton {
     property var notifHistory: []
     property int nextNotifId: 1
 
-    function addNotifToHistory(appName: string, summary: string, body: string, isCritical = false): void {
+    function addNotifToHistory(appName: string, summary: string, body: string, isCritical = false, desktopEntry = ""): void {
         const entry = {
             id: root.nextNotifId++,
             appName: appName || "System",
+            desktopEntry: desktopEntry || "",
             summary: summary || "Notification",
             body: body || "",
             urgent: !!isCritical,
             time: Qt.formatDateTime(new Date(), "hh:mm")
         };
         root.notifHistory = [entry, ...root.notifHistory].slice(0, 25);
+    }
+
+    function focusNotificationTarget(appName: string, desktopEntry = "", summary = ""): bool {
+        const clean = s => (s || "").toLowerCase().replace(/\.desktop$/i, "").trim();
+        const ignored = ["", "system", "notify-send", "sora", "unknown"];
+        const rawKeys = [];
+        for (const src of [clean(desktopEntry), clean(appName)]) {
+            if (!ignored.includes(src) && !rawKeys.includes(src)) rawKeys.push(src);
+        }
+        if (rawKeys.length === 0) return false;
+
+        const aliases = {
+            "discord": ["discord", "vesktop", "equibop"],
+            "vesktop": ["vesktop", "discord"],
+            "equibop": ["equibop", "discord"],
+            "google chrome": ["google-chrome", "chrome", "chromium"],
+            "chrome": ["google-chrome", "chrome", "chromium"],
+            "telegram desktop": ["org.telegram.desktop", "telegram"],
+            "telegram": ["org.telegram.desktop", "telegram"],
+            "whatsapp": ["whatsapp", "wasistlos", "zapzap"]
+        };
+
+        const searchTerms = [];
+        for (const k of rawKeys) {
+            searchTerms.push(k);
+            const firstWord = k.split(/[\s._-]+/)[0];
+            if (firstWord && firstWord.length >= 3 && !searchTerms.includes(firstWord)) searchTerms.push(firstWord);
+            if (aliases[k]) {
+                for (const a of aliases[k]) {
+                    if (!searchTerms.includes(a)) searchTerms.push(a);
+                }
+            }
+        }
+
+        const toplevels = Hyprland.toplevels?.values ?? [];
+        let best = null;
+        let bestScore = 0;
+
+        for (let i = 0; i < toplevels.length; i++) {
+            const t = toplevels[i];
+            const classes = [
+                (t?.wayland?.appId ?? "").toLowerCase(),
+                (t?.lastIpcObject?.class ?? "").toLowerCase(),
+                (t?.lastIpcObject?.initialClass ?? "").toLowerCase()
+            ].filter(c => c.length > 0);
+            const title = (t?.lastIpcObject?.title ?? "").toLowerCase();
+
+            let score = 0;
+            for (let j = 0; j < rawKeys.length; j++) {
+                const rk = rawKeys[j];
+                if (classes.some(c => c === rk)) score = Math.max(score, 4);
+                else if (classes.some(c => c.includes(rk) || rk.includes(c))) score = Math.max(score, 3);
+            }
+            if (score < 2) {
+                for (let j = 0; j < searchTerms.length; j++) {
+                    const st = searchTerms[j];
+                    if (classes.some(c => c.includes(st) || st.includes(c))) score = Math.max(score, 2);
+                    else if (title.includes(st)) score = Math.max(score, 1);
+                }
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                best = t;
+            }
+        }
+
+        if (best) {
+            const addr = best.lastIpcObject?.address ?? "";
+            if (addr.length > 0) {
+                Hyprland.dispatch(`focuswindow address:${addr}`);
+                return true;
+            }
+        }
+
+        const apps = [...DesktopEntries.applications.values];
+        for (const rk of rawKeys) {
+            const match = apps.find(a => a && !a.noDisplay && ((a.id ?? "").toLowerCase().replace(/\.desktop$/, "") === rk || (a.name ?? "").toLowerCase() === rk));
+            if (match) {
+                match.execute();
+                return true;
+            }
+        }
+        return false;
     }
 
     function removeNotifFromHistory(notifId: int): void {
@@ -373,14 +490,19 @@ Singleton {
     readonly property list<string> kanjiNumbers: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
     property string distroIcon: "󰣇"
 
-    // Bar & Pill Geometry (floating pill style)
-    property int barHeight: 38
-    property int barMarginTop: 4
+    // Screen Perimeter Frame (permanent mode-aware architectural gap)
+    property int screenBorderSize: 8
+    property int screenBorderRadius: 20
+
+    // Bar & Pill Geometry (compact floating pill style)
+    property int barHeight: 32
+    property int barMarginTop: 8
     property int barMarginSide: 12
-    property int pillHeight: 30
-    property int pillRadius: 15
-    property int pillPaddingH: 11
-    property int itemSpacing: 7
+    property int pillHeight: 26
+    property int pillRadius: 13
+    property int pillPaddingH: 9
+    property int clockPillWidth: 74
+    property int itemSpacing: 6
     property int workspaceCount: 10
 
     // Desktop Widgets State & Config (persisted in config/desktop_widgets.json)
@@ -466,7 +588,7 @@ Singleton {
             _lastWidgetStateJson = trimmed;
             widgetLayoutVersion++;
         } catch (e) {
-            console.warn("Config: gagal membaca desktop_widgets.json:", e);
+            console.warn("Config: failed to read desktop_widgets.json:", e);
         } finally {
             _applyingWidgetState = false;
         }

@@ -24,10 +24,10 @@ Item {
     property bool monthPickerOpen: false
     property bool yearPickerOpen: false
 
-    readonly property var monthNames: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-    readonly property var indoMonthsFull: ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-    readonly property var indoDaysShort: ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
-    readonly property var indoDaysFull: ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]
+    readonly property var monthNames: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    readonly property var indoMonthsFull: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    readonly property var indoDaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    readonly property var indoDaysFull: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
     readonly property string todayKey: formatDateKey(sysClock.date.getFullYear(), sysClock.date.getMonth(), sysClock.date.getDate())
     readonly property bool isViewingCurrentMonth: {
@@ -44,7 +44,7 @@ Item {
 
     readonly property string heroGreetingText: {
         const h = sysClock.date.getHours();
-        const greet = h < 11 ? "Selamat Pagi" : (h < 15 ? "Selamat Siang" : (h < 18 ? "Selamat Sore" : "Selamat Malam"));
+        const greet = h < 12 ? "Good Morning" : (h < 17 ? "Good Afternoon" : "Good Evening");
         return `${greet}, ${root.userName}`;
     }
 
@@ -116,7 +116,7 @@ Item {
                 month: m,
                 badge: String(d),
                 title: `${d} ${root.monthNames[m] ?? ""}`,
-                subtitle: note.length > 0 ? note : "Ditandai"
+                subtitle: note.length > 0 ? note : "Marked"
             };
         });
     }
@@ -149,11 +149,11 @@ Item {
     readonly property string weatherLocPath: `${Quickshell.env("HOME")}/.config/quickshell/sora/config/weather_location.json`
 
     readonly property string weatherSourceLabel: {
-        if (weatherSource === "manual" || weatherMode === "manual") return "Lokasi sendiri";
-        if (weatherSource === "gpsd") return "GPS sistem (gpsd)";
+        if (weatherSource === "manual" || weatherMode === "manual") return "Custom location";
+        if (weatherSource === "gpsd") return "System GPS (gpsd)";
         if (weatherSource === "geoclue") return "GeoClue2 (< 2 km)";
-        if (weatherSource === "ip") return "Perkiraan IP (kurang akurat)";
-        return "Otomatis";
+        if (weatherSource === "ip") return "IP estimate (less accurate)";
+        return "Auto";
     }
 
     function weatherIconFor(code: int, isDay: bool): string {
@@ -168,18 +168,18 @@ Item {
     }
 
     function weatherLabelFor(code: int): string {
-        if (code === 0) return "Cerah";
-        if (code === 1) return "Cerah berawan";
-        if (code === 2) return "Berawan sebagian";
-        if (code === 3) return "Mendung";
-        if (code === 45 || code === 48) return "Berkabut";
-        if (code >= 51 && code <= 57) return "Gerimis";
-        if (code === 61 || code === 80) return "Hujan ringan";
-        if (code === 63 || code === 81) return "Hujan";
-        if (code === 65 || code === 67 || code === 82) return "Hujan deras";
-        if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Salju";
-        if (code >= 95) return "Badai petir";
-        return "Berawan";
+        if (code === 0) return "Clear";
+        if (code === 1) return "Mainly clear";
+        if (code === 2) return "Partly cloudy";
+        if (code === 3) return "Overcast";
+        if (code === 45 || code === 48) return "Foggy";
+        if (code >= 51 && code <= 57) return "Drizzle";
+        if (code === 61 || code === 80) return "Light rain";
+        if (code === 63 || code === 81) return "Rain";
+        if (code === 65 || code === 67 || code === 82) return "Heavy rain";
+        if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
+        if (code >= 95) return "Thunderstorm";
+        return "Cloudy";
     }
 
     function loadWeatherLocJson(raw: string): bool {
@@ -262,7 +262,7 @@ Item {
     function submitWeatherLocQuery(queryText: string): void {
         const trimmed = String(queryText ?? "").trim();
         if (trimmed.length === 0) {
-            weatherLocError = "Masukkan nama kota/kecamatan atau koordinat lat, lon.";
+            weatherLocError = "Enter a city name or lat, lon coordinates.";
             return;
         }
         if (resolveLocProc.running) return;
@@ -278,7 +278,7 @@ Item {
             "        return json.loads(r.read().decode('utf-8'))\n" +
             "def rev(la, lo):\n" +
             "    try:\n" +
-            "        r = g(f'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={la}&longitude={lo}&localityLanguage=id')\n" +
+            "        r = g(f'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={la}&longitude={lo}&localityLanguage=en')\n" +
             "        loc = str(r.get('locality') or '').strip()\n" +
             "        ct = str(r.get('city') or '').strip()\n" +
             "        name = loc or ct or f'{la:.2f}, {lo:.2f}'\n" +
@@ -299,7 +299,7 @@ Item {
             "    except ValueError:\n" +
             "        pass\n" +
             "try:\n" +
-            "    om = g('https://geocoding-api.open-meteo.com/v1/search?name=' + urllib.parse.quote(q) + '&count=1&language=id')\n" +
+            "    om = g('https://geocoding-api.open-meteo.com/v1/search?name=' + urllib.parse.quote(q) + '&count=1&language=en')\n" +
             "    rs = om.get('results') or []\n" +
             "    if rs:\n" +
             "        r0 = rs[0]\n" +
@@ -308,7 +308,7 @@ Item {
             "        lbl = f'{ct}, {adm}' if (adm and adm != ct) else ct\n" +
             "        print(json.dumps({'ok': True, 'lat': float(r0['latitude']), 'lon': float(r0['longitude']), 'city': ct, 'label': lbl}))\n" +
             "        sys.exit(0)\n" +
-            "    nom = g('https://nominatim.openstreetmap.org/search?q=' + urllib.parse.quote(q) + '&format=json&addressdetails=1&limit=5&accept-language=id')\n" +
+            "    nom = g('https://nominatim.openstreetmap.org/search?q=' + urllib.parse.quote(q) + '&format=json&addressdetails=1&limit=5&accept-language=en')\n" +
             "    if nom:\n" +
             "        r0 = next((r for r in nom if r.get('class') in ('boundary', 'place')), nom[0])\n" +
             "        addr = r0.get('address') or {}\n" +
@@ -317,9 +317,9 @@ Item {
             "        lbl = f'{ct}, {st}' if (st and st != ct) else ct\n" +
             "        print(json.dumps({'ok': True, 'lat': float(r0['lat']), 'lon': float(r0['lon']), 'city': ct, 'label': lbl}))\n" +
             "        sys.exit(0)\n" +
-            "    print(json.dumps({'ok': False, 'error': 'Lokasi tidak ditemukan.'}))\n" +
+            "    print(json.dumps({'ok': False, 'error': 'Location not found.'}))\n" +
             "except Exception:\n" +
-            "    print(json.dumps({'ok': False, 'error': 'Gagal mencari lokasi.'}))",
+            "    print(json.dumps({'ok': False, 'error': 'Failed to search location.'}))",
             trimmed
         ];
         resolveLocProc.running = true;
@@ -416,7 +416,7 @@ Item {
             "                la, lo = d['loc'].split(',', 1)\n" +
             "            if la is not None and lo is not None:\n" +
             "                lat, lon, src = float(la), float(lo), 'ip'\n" +
-            "                city = str(d.get('city') or 'Lokasi').strip()\n" +
+            "                city = str(d.get('city') or 'Location').strip()\n" +
             "                lbl = city\n" +
             "                break\n" +
             "        except Exception:\n" +
@@ -428,7 +428,7 @@ Item {
             "    sys.exit(1)\n" +
             "w = g(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,wind_speed_10m&timezone=auto')\n" +
             "c = w['current']\n" +
-            "print(json.dumps({'city': city or 'Lokasi', 'label': lbl or city or 'Lokasi', 'source': src, 'lat': lat, 'lon': lon, 'temp': round(float(c['temperature_2m'])), 'feels': round(float(c.get('apparent_temperature', c['temperature_2m']))), 'hum': int(round(float(c['relative_humidity_2m']))), 'wind': round(float(c['wind_speed_10m'])), 'isDay': int(c.get('is_day', 1)) == 1, 'code': int(c.get('weather_code', 3))}))",
+            "print(json.dumps({'city': city or 'Location', 'label': lbl or city or 'Location', 'source': src, 'lat': lat, 'lon': lon, 'temp': round(float(c['temperature_2m'])), 'feels': round(float(c.get('apparent_temperature', c['temperature_2m']))), 'hum': int(round(float(c['relative_humidity_2m']))), 'wind': round(float(c['wind_speed_10m'])), 'isDay': int(c.get('is_day', 1)) == 1, 'code': int(c.get('weather_code', 3))}))",
             modeArg, latArg, lonArg, cityArg, labelArg
         ];
         weatherProc.running = true;
@@ -468,7 +468,7 @@ Item {
                     const obj = JSON.parse(raw);
                     root._locGotPayload = true;
                     if (obj && obj.ok) {
-                        const ct = String(obj.city ?? "Lokasi");
+                        const ct = String(obj.city ?? "Location");
                         const lbl = String(obj.label ?? ct);
                         const la = Number(obj.lat);
                         const lo = Number(obj.lon);
@@ -482,17 +482,17 @@ Item {
                         root.closeWeatherLocEditor();
                         root.refreshWeather(true);
                     } else {
-                        root.weatherLocError = String(obj?.error ?? "Lokasi tidak ditemukan.");
+                        root.weatherLocError = String(obj?.error ?? "Location not found.");
                     }
                 } catch (e) {
-                    root.weatherLocError = "Gagal membaca hasil lokasi.";
+                    root.weatherLocError = "Failed to read location result.";
                 }
             }
         }
         onExited: exitCode => {
             root.weatherLocSearching = false;
             if (!root._locGotPayload && root.weatherLocEditorOpen) {
-                root.weatherLocError = "Gagal mencari lokasi.";
+                root.weatherLocError = "Failed to search location.";
             }
         }
     }
@@ -508,7 +508,7 @@ Item {
                 try {
                     const obj = JSON.parse(raw);
                     if (obj && typeof obj.temp === "number") {
-                        root.weatherCity = String(obj.city ?? "Lokasi");
+                        root.weatherCity = String(obj.city ?? "Location");
                         root.weatherLabel = String(obj.label ?? root.weatherCity);
                         root.weatherSource = String(obj.source ?? root.weatherMode);
                         root.weatherLat = Number(obj.lat);
@@ -627,7 +627,7 @@ Item {
                 markedDates = [...markedDates, dateKey];
             }
             if (dateKey === root.todayKey) {
-                Quickshell.execDetached(["notify-send", "-u", "critical", "Kalender KINFAEL", `Acara hari ini: ${trimmed}`]);
+                Quickshell.execDetached(["notify-send", "-u", "critical", "KINFAEL Calendar", `Today's event: ${trimmed}`]);
             }
         } else {
             delete next[dateKey];
@@ -686,8 +686,8 @@ Item {
         if (hasEvent(tKey) && lastNotifiedDate !== tKey) {
             lastNotifiedDate = tKey;
             const note = getEvent(tKey);
-            const msg = note.length > 0 ? `Hari ini: ${note}` : `Hari ini (${tKey}) memiliki penanda kalender.`;
-            Quickshell.execDetached(["notify-send", "-u", "critical", "Pengingat Kalender", msg]);
+            const msg = note.length > 0 ? `Today: ${note}` : `Today (${tKey}) has a calendar mark.`;
+            Quickshell.execDetached(["notify-send", "-u", "critical", "Calendar Reminder", msg]);
         }
     }
 
@@ -709,7 +709,7 @@ Item {
                     }
                 }
             } catch (e) {
-                root.storageError = "Gagal membaca penanda kalender.";
+                root.storageError = "Failed to read calendar marks.";
             }
         }
     }
@@ -732,7 +732,7 @@ Item {
                     }
                 }
             } catch (e) {
-                root.storageError = "Gagal membaca catatan agenda.";
+                root.storageError = "Failed to read agenda notes.";
             }
         }
     }
@@ -827,6 +827,18 @@ Item {
                 radius: 10
                 color: Theme.surface
 
+                RectangularShadow {
+                    visible: !Theme.isDarkMode
+                    anchors.fill: parent
+                    radius: parent.radius
+                    blur: 12
+                    spread: 0.0
+                    offset.x: 0
+                    offset.y: 2
+                    color: Qt.alpha("#000000", 0.10)
+                    z: -1
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.topMargin: 7
@@ -839,7 +851,7 @@ Item {
                         width: 26
                         height: 26
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Buka Dashboard"
+                        Accessible.name: "Open Dashboard"
 
                         HoverHandler { id: railAvatarHover }
 
@@ -883,6 +895,8 @@ Item {
                                 Image {
                                     anchors.fill: parent
                                     source: `file://${Quickshell.env("HOME")}/.face`
+                                    sourceSize.width: 96
+                                    sourceSize.height: 96
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     visible: status === Image.Ready
@@ -925,19 +939,19 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         spacing: 4
 
-                        // Mode Terang / Gelap
+                        // Light / Dark Mode
                         Rectangle {
                             width: 26
                             height: 26
                             radius: 7
                             color: railModeHover.hovered ? Theme.surfaceContainerLow : "transparent"
                             Accessible.role: Accessible.Button
-                            Accessible.name: Theme.isDarkMode ? "Aktifkan Mode Terang" : "Aktifkan Mode Gelap"
+                            Accessible.name: Theme.isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
 
                             HoverHandler { id: railModeHover }
                             MatIcon {
                                 anchors.centerIn: parent
-                                icon: "contrast"
+                                icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
                                 size: 15
                                 color: railModeHover.hovered ? Theme.accentInk : Theme.text
                             }
@@ -955,7 +969,7 @@ Item {
                             radius: 7
                             color: railWpHover.hovered ? Theme.surfaceContainerLow : "transparent"
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Pilih Wallpaper"
+                            Accessible.name: "Choose Wallpaper"
 
                             HoverHandler { id: railWpHover }
                             MatIcon {
@@ -1009,7 +1023,7 @@ Item {
                                 ? Theme.accent
                                 : (railDndHover.hovered ? Theme.surfaceContainerLow : "transparent")
                             Accessible.role: Accessible.Button
-                            Accessible.name: "Toggle Jangan Ganggu"
+                            Accessible.name: "Toggle Do Not Disturb"
 
                             HoverHandler { id: railDndHover }
                             MatIcon {
@@ -1042,7 +1056,7 @@ Item {
                         radius: 7
                         color: railLockHover.hovered ? Theme.surfaceContainerLow : "transparent"
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Kunci Layar"
+                        Accessible.name: "Lock Screen"
 
                         HoverHandler { id: railLockHover }
                         MatIcon {
@@ -1057,7 +1071,7 @@ Item {
                             onClicked: {
                                 Config.centerPopoverHovered = false;
                                 Config.centerPopoverOpen = false;
-                                Quickshell.execDetached(["hyprlock"]);
+                                Config.lockScreen();
                             }
                         }
                     }
@@ -1116,13 +1130,27 @@ Item {
                         spacing: 8
 
                         // CARD A: WIDE HERO WALLPAPER + USER + SWATCHES (404 x 140)
-                        Rectangle {
-                            id: heroCard
+                        Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: 10
-                            color: Theme.surfaceContainerLow
-                            clip: true
+
+                            RectangularShadow {
+                                visible: !Theme.isDarkMode
+                                anchors.fill: heroCard
+                                radius: heroCard.radius
+                                blur: 12
+                                spread: 0.0
+                                offset.x: 0
+                                offset.y: 2
+                                color: Qt.alpha("#000000", 0.10)
+                            }
+
+                            Rectangle {
+                                id: heroCard
+                                anchors.fill: parent
+                                radius: 10
+                                color: Theme.surfaceContainerLow
+                                clip: true
 
                             HoverHandler { id: heroBgHover }
 
@@ -1244,7 +1272,7 @@ Item {
                                     }
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: "Ganti Wallpaper"
+                                        text: "Change Wallpaper"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
                                         font.weight: Font.Medium
@@ -1299,7 +1327,7 @@ Item {
                                     }
                                 }
                             }
-
+                        }
                         }
 
                         // CARD B: TOP-RIGHT SPARSE AGENDA CARD (208 x 140)
@@ -1309,6 +1337,18 @@ Item {
                             Layout.fillHeight: true
                             radius: 10
                             color: Theme.surface
+
+                            RectangularShadow {
+                                visible: !Theme.isDarkMode
+                                anchors.fill: parent
+                                radius: parent.radius
+                                blur: 12
+                                spread: 0.0
+                                offset.x: 0
+                                offset.y: 2
+                                color: Qt.alpha("#000000", 0.10)
+                                z: -1
+                            }
 
                             ColumnLayout {
                                 anchors.fill: parent
@@ -1338,7 +1378,7 @@ Item {
                                         border.width: agCountHover.hovered ? 1 : 0
                                         border.color: Theme.text
                                         Accessible.role: Accessible.Button
-                                        Accessible.name: "Lompat ke agenda terdekat"
+                                        Accessible.name: "Jump to next agenda"
                                         HoverHandler { id: agCountHover }
 
                                         Text {
@@ -1366,7 +1406,7 @@ Item {
                                         radius: 9
                                         color: agPlusHover.hovered ? Theme.surfaceContainerLow : "transparent"
                                         Accessible.role: Accessible.Button
-                                        Accessible.name: "Tambah agenda tanggal terpilih"
+                                        Accessible.name: "Add agenda for selected date"
                                         HoverHandler { id: agPlusHover }
                                         MatIcon {
                                             anchors.centerIn: parent
@@ -1389,7 +1429,7 @@ Item {
                                     radius: 7
                                     color: selRowHover.hovered ? Theme.surfaceContainerLow : "transparent"
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Edit agenda tanggal terpilih"
+                                    Accessible.name: "Edit agenda for selected date"
 
                                     HoverHandler { id: selRowHover }
 
@@ -1421,8 +1461,8 @@ Item {
                                             text: {
                                                 if (root.storageError.length > 0) return root.storageError;
                                                 if (root.inspectedEventNote.length > 0) return `${root.inspectedShortDate} · ${root.inspectedEventNote}`;
-                                                if (root.inspectedHasMark) return `${root.inspectedShortDate} · Ditandai`;
-                                                return `${root.inspectedShortDate} · Kosong`;
+                                                if (root.inspectedHasMark) return `${root.inspectedShortDate} · Marked`;
+                                                return `${root.inspectedShortDate} · Empty`;
                                             }
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
@@ -1521,13 +1561,13 @@ Item {
                                     radius: 6
                                     color: agCtaHover.hovered ? Theme.surfaceContainerHigh : Theme.surfaceContainer
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: root.hasEvent(root.selectedDateKey) ? "Edit Agenda" : "Tambah Agenda"
+                                    Accessible.name: root.hasEvent(root.selectedDateKey) ? "Edit Agenda" : "Add Agenda"
 
                                     HoverHandler { id: agCtaHover }
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: root.hasEvent(root.selectedDateKey) ? "Edit Agenda" : "Tambah Agenda"
+                                        text: root.hasEvent(root.selectedDateKey) ? "Edit Agenda" : "Add Agenda"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
                                         font.weight: Font.DemiBold
@@ -1560,6 +1600,18 @@ Item {
                             radius: 10
                             color: Theme.surface
 
+                            RectangularShadow {
+                                visible: !Theme.isDarkMode
+                                anchors.fill: parent
+                                radius: parent.radius
+                                blur: 12
+                                spread: 0.0
+                                offset.x: 0
+                                offset.y: 2
+                                color: Qt.alpha("#000000", 0.10)
+                                z: -1
+                            }
+
                             Column {
                                 anchors.fill: parent
                                 anchors.margins: 9
@@ -1580,7 +1632,7 @@ Item {
                                             radius: 5
                                             color: mPrevHover.hovered ? Theme.surfaceContainerLow : "transparent"
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Bulan sebelumnya"
+                                            Accessible.name: "Previous month"
                                             HoverHandler { id: mPrevHover }
                                             MatIcon {
                                                 anchors.centerIn: parent
@@ -1599,7 +1651,7 @@ Item {
                                             height: 18
                                             implicitWidth: monthLabel.implicitWidth + 4
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Pilih bulan"
+                                            Accessible.name: "Select month"
                                             HoverHandler { id: monthHover }
                                             WheelHandler {
                                                 onWheel: event => {
@@ -1630,7 +1682,7 @@ Item {
                                             height: 18
                                             implicitWidth: yearLabel.implicitWidth + 4
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Pilih tahun"
+                                            Accessible.name: "Select year"
                                             HoverHandler { id: yearHover }
                                             WheelHandler {
                                                 onWheel: event => {
@@ -1665,7 +1717,7 @@ Item {
                                             radius: 5
                                             color: mNextHover.hovered ? Theme.surfaceContainerLow : "transparent"
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Bulan berikutnya"
+                                            Accessible.name: "Next month"
                                             HoverHandler { id: mNextHover }
                                             MatIcon {
                                                 anchors.centerIn: parent
@@ -1689,12 +1741,12 @@ Item {
                                             radius: 5
                                             color: todayBtnHover.hovered ? Theme.accent : Theme.surfaceContainer
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Kembali ke hari ini"
+                                            Accessible.name: "Jump to today"
                                             HoverHandler { id: todayBtnHover }
                                             Text {
                                                 id: todayBtnText
                                                 anchors.centerIn: parent
-                                                text: "Hari Ini"
+                                                text: "Today"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 9
                                                 font.weight: Font.DemiBold
@@ -1840,6 +1892,18 @@ Item {
                             radius: 10
                             color: Theme.surface
 
+                            RectangularShadow {
+                                visible: !Theme.isDarkMode
+                                anchors.fill: parent
+                                radius: parent.radius
+                                blur: 12
+                                spread: 0.0
+                                offset.x: 0
+                                offset.y: 2
+                                color: Qt.alpha("#000000", 0.10)
+                                z: -1
+                            }
+
                             ColumnLayout {
                                 anchors.fill: parent
                                 anchors.margins: 10
@@ -1861,7 +1925,7 @@ Item {
                                         border.width: activeFocus ? 1.5 : 0
                                         border.color: Theme.accent
                                         Accessible.role: Accessible.Button
-                                        Accessible.name: "Atur lokasi cuaca"
+                                        Accessible.name: "Set weather location"
 
                                         HoverHandler { id: wLocHover }
 
@@ -1882,7 +1946,7 @@ Item {
 
                                             Text {
                                                 Layout.fillWidth: true
-                                                text: root.weatherCity.length > 0 ? root.weatherCity : "Cuaca"
+                                                text: root.weatherCity.length > 0 ? root.weatherCity : "Weather"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 11
                                                 font.weight: Font.Bold
@@ -1911,7 +1975,7 @@ Item {
                                         border.width: activeFocus ? 1.5 : 0
                                         border.color: Theme.accent
                                         Accessible.role: Accessible.Button
-                                        Accessible.name: "Muat ulang cuaca"
+                                        Accessible.name: "Refresh weather"
 
                                         HoverHandler { id: wRefHover }
 
@@ -1987,7 +2051,7 @@ Item {
 
                                                     Text {
                                                         Layout.fillWidth: true
-                                                        text: `Terasa ${root.weatherFeelsLike}° · ${root.weatherIsDay ? "Siang" : "Malam"}`
+                                                        text: `Feels like ${root.weatherFeelsLike}° · ${root.weatherIsDay ? "Day" : "Night"}`
                                                         font.family: Theme.fontFamily
                                                         font.features: Theme.tabularFeatures
                                                         font.pixelSize: 10
@@ -2099,7 +2163,7 @@ Item {
 
                                         Text {
                                             Layout.alignment: Qt.AlignHCenter
-                                            text: "Memuat cuaca..."
+                                            text: "Loading weather..."
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
                                             color: Theme.subtext
@@ -2122,7 +2186,7 @@ Item {
 
                                         Text {
                                             Layout.alignment: Qt.AlignHCenter
-                                            text: "Cuaca gagal dimuat"
+                                            text: "Failed to load weather"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
                                             color: Theme.subtext
@@ -2138,14 +2202,14 @@ Item {
                                             border.width: activeFocus ? 1.5 : 0
                                             border.color: Theme.accent
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Muat ulang cuaca"
+                                            Accessible.name: "Reload weather"
 
                                             HoverHandler { id: retryHover }
 
                                             Text {
                                                 id: retryLbl
                                                 anchors.centerIn: parent
-                                                text: "Muat ulang"
+                                                text: "Retry"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 10
                                                 font.weight: Font.DemiBold
@@ -2442,7 +2506,7 @@ Item {
                                     border.width: activeFocus ? 1.5 : 0
                                     border.color: Theme.accentInk
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Tutup editor agenda"
+                                    Accessible.name: "Close agenda editor"
 
                                     HoverHandler { id: closeEditHover }
                                     MatIcon {
@@ -2473,7 +2537,7 @@ Item {
                                 spacing: 5
 
                                 Text {
-                                    text: "Catatan"
+                                    text: "Notes"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.Medium
@@ -2514,7 +2578,7 @@ Item {
                                         Text {
                                             anchors.left: parent.left
                                             anchors.verticalCenter: parent.verticalCenter
-                                            text: "Tulis agenda..."
+                                            text: "Write agenda..."
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 12
                                             color: Qt.alpha(Theme.subtext, 0.80)
@@ -2547,13 +2611,13 @@ Item {
                                     border.width: activeFocus ? 2 : 1
                                     border.color: delHover.hovered ? Theme.urgent : Theme.urgentInk
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Hapus agenda"
+                                    Accessible.name: "Delete agenda"
 
                                     HoverHandler { id: delHover }
                                     Text {
                                         id: delText
                                         anchors.centerIn: parent
-                                        text: "Hapus"
+                                        text: "Delete"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         font.weight: Font.DemiBold
@@ -2592,13 +2656,13 @@ Item {
                                     border.width: activeFocus ? 1.5 : 0
                                     border.color: Theme.accentInk
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Batal"
+                                    Accessible.name: "Cancel"
 
                                     HoverHandler { id: cancelHover }
                                     Text {
                                         id: cancelText
                                         anchors.centerIn: parent
-                                        text: "Batal"
+                                        text: "Cancel"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         font.weight: Font.Medium
@@ -2626,13 +2690,13 @@ Item {
                                     border.width: activeFocus ? 2 : 0
                                     border.color: Theme.text
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Simpan agenda"
+                                    Accessible.name: "Save agenda"
 
                                     HoverHandler { id: saveHover }
                                     Text {
                                         id: saveText
                                         anchors.centerIn: parent
-                                        text: "Simpan"
+                                        text: "Save"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         font.weight: Font.Bold
@@ -2740,7 +2804,7 @@ Item {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Lokasi Cuaca (GPS / Kota)"
+                                    text: "Weather Location (GPS / City)"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                     font.weight: Font.Bold
@@ -2760,7 +2824,7 @@ Item {
                                     border.width: activeFocus ? 1.5 : 0
                                     border.color: Theme.accentInk
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Tutup pengaturan lokasi cuaca"
+                                    Accessible.name: "Close weather location settings"
 
                                     HoverHandler { id: wLocCloseHover }
                                     MatIcon {
@@ -2793,7 +2857,7 @@ Item {
                                     const coords = (!isNaN(root.weatherLat) && !isNaN(root.weatherLon))
                                         ? ` (${root.weatherLat.toFixed(4)}, ${root.weatherLon.toFixed(4)})`
                                         : "";
-                                    return `Aktif: ${name}${coords} · ${root.weatherSourceLabel}`;
+                                    return `Active: ${name}${coords} · ${root.weatherSourceLabel}`;
                                 }
                                 font.family: Theme.fontFamily
                                 font.features: Theme.tabularFeatures
@@ -2807,7 +2871,7 @@ Item {
                                 spacing: 5
 
                                 Text {
-                                    text: "Kota/kecamatan atau koordinat lat, lon"
+                                    text: "City or lat, lon coordinates"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.Medium
@@ -2850,7 +2914,7 @@ Item {
                                         Text {
                                             anchors.left: parent.left
                                             anchors.verticalCenter: parent.verticalCenter
-                                            text: "Contoh: Bekasi Barat atau -6.245, 106.992"
+                                            text: "Example: Tokyo or 35.6762, 139.6503"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 12
                                             color: Theme.subtext
@@ -2891,13 +2955,13 @@ Item {
                                     border.width: activeFocus ? 1.5 : 1
                                     border.color: activeFocus ? Theme.accentInk : Theme.outline
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Gunakan GPS atau lokasi otomatis"
+                                    Accessible.name: "Use GPS or automatic location"
 
                                     HoverHandler { id: wLocAutoHover }
                                     Text {
                                         id: wLocAutoLbl
                                         anchors.centerIn: parent
-                                        text: "Otomatis GPS"
+                                        text: "Auto GPS"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         font.weight: Font.DemiBold
@@ -2927,13 +2991,13 @@ Item {
                                     border.width: activeFocus ? 1.5 : 0
                                     border.color: Theme.accentInk
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Batal"
+                                    Accessible.name: "Cancel"
 
                                     HoverHandler { id: wLocCancelHover }
                                     Text {
                                         id: wLocCancelLbl
                                         anchors.centerIn: parent
-                                        text: "Batal"
+                                        text: "Cancel"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         font.weight: Font.Medium
@@ -2963,13 +3027,13 @@ Item {
                                     border.width: activeFocus ? 2 : 0
                                     border.color: Theme.text
                                     Accessible.role: Accessible.Button
-                                    Accessible.name: "Terapkan lokasi cuaca"
+                                    Accessible.name: "Apply weather location"
 
                                     HoverHandler { id: wLocSaveHover }
                                     Text {
                                         id: wLocSaveLbl
                                         anchors.centerIn: parent
-                                        text: root.weatherLocSearching ? "Mencari..." : "Terapkan"
+                                        text: root.weatherLocSearching ? "Searching..." : "Apply"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         font.weight: Font.Bold

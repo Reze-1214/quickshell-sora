@@ -52,7 +52,7 @@ Singleton {
     }
 
     Timer {
-        interval: 10000
+        interval: 30000
         running: true
         repeat: true
         onTriggered: root.loadProfile()
@@ -71,7 +71,7 @@ Singleton {
             root._applyingProfile = "";
             root._pendingProfile = "";
             if (exitCode !== 0) {
-                console.warn("PowerService: gagal menerapkan profil daya, exitCode:", exitCode);
+                console.warn("PowerService: failed to apply power profile, exitCode:", exitCode);
                 root.loadProfile();
             } else {
                 verifyTimer.restart();

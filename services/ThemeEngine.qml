@@ -209,20 +209,32 @@ Singleton {
         const isDark = Theme.isDarkMode;
         const mode = isDark ? "dark" : "light";
 
-        // 1. Anchor neutral charcoal / mist surfaces (KINFAEL Material System)
-        const baseBg = isDark ? "#171A1C" : "#F3F5F5";
-        const elevatedBg = isDark ? "#202629" : "#FFFFFF";
-        const secondaryBg = isDark ? "#252C2F" : "#E5EAEB";
+        // 1. Resolve live wallpaper-extracted palette & neutral charcoal / tinted paper surfaces
+        const palette = root.wallpaperPalette?.colors ?? root.cachedColorsData?.colors ?? null;
+        const ltSurfLowest = palette?.surface_container_lowest?.light?.color ?? "#FFFFFF";
+        const ltSurfLow = palette?.surface_container_low?.light?.color ?? "#F2F5F8";
+        const ltCont = palette?.surface_container?.light?.color ?? "#E6EBF0";
+        const ltContHigh = palette?.surface_container_high?.light?.color ?? "#DCE2E8";
+        const ltContHighest = palette?.surface_container_highest?.light?.color ?? "#D2D9E0";
+        const ltText = palette?.on_surface?.light?.color ?? "#1B2024";
+        const ltSubtext = palette?.on_surface_variant?.light?.color ?? "#4A545C";
+
+        const baseBg = isDark ? "#171A1C" : Theme.blendRgb(ltCont, ltContHigh, 0.35);
+        const elevatedBg = isDark ? "#202629" : Theme.blendRgb(ltSurfLowest, ltSurfLow, 0.28);
+        const secondaryBg = isDark ? "#252C2F" : ltCont;
 
         // 2. Resolve live wallpaper-extracted accents safely
-        const palette = root.wallpaperPalette?.colors ?? root.cachedColorsData?.colors ?? null;
-        const wpBase = palette?.source_color?.default?.color
-            ?? palette?.primary_container?.default?.color
-            ?? palette?.primary?.dark?.color
-            ?? (isDark ? "#E8EBEB" : "#F6D32D");
+        const wpBase = isDark
+            ? (palette?.source_color?.default?.color
+                ?? palette?.primary_container?.default?.color
+                ?? palette?.primary?.dark?.color
+                ?? "#E8EBEB")
+            : (palette?.primary?.light?.color
+                ?? palette?.source_color?.default?.color
+                ?? "#3D484D");
         const wpPrim = wpBase;
-        const wpSec = palette?.secondary?.dark?.color ?? palette?.secondary?.[mode]?.color ?? (isDark ? "#C5CDCF" : "#4A565B");
-        const wpTert = palette?.tertiary?.dark?.color ?? palette?.tertiary?.[mode]?.color ?? (isDark ? "#BFC8CA" : "#4A565B");
+        const wpSec = palette?.secondary?.[mode]?.color ?? palette?.secondary?.dark?.color ?? (isDark ? "#C5CDCF" : "#4A545C");
+        const wpTert = palette?.tertiary?.[mode]?.color ?? palette?.tertiary?.dark?.color ?? (isDark ? "#BFC8CA" : "#4A545C");
 
         // 3. Determine active accent source (Custom Accent OR Wallpaper Adaptive)
         let rawAccent = wpPrim;
@@ -235,7 +247,7 @@ Singleton {
         }
 
         // 4. Contrast references & text-on-fill calculation
-        const darkInkRef = isDark ? "#171A1C" : "#252C2F";
+        const darkInkRef = isDark ? "#171A1C" : ltText;
         const lightInkRef = isDark ? "#F4F6F6" : "#F8FAFA";
 
         // Determine optimal high-contrast text/icon for onPrimary / accentOnFill (e.g. dark on yellow, white on dark blue)
@@ -243,23 +255,21 @@ Singleton {
             ? darkInkRef
             : lightInkRef;
 
-        // Contrast-safe fallback for raw standalone text without a container
-        const safeInk = isDark
-            ? Theme.ensureContrast(rawAccent, secondaryBg, 4.5, true)
-            : Theme.ensureContrast(rawAccent, secondaryBg, 3.8, false);
-        const safeSecondary = Theme.ensureContrast(rawSecondary, secondaryBg, 3.2, isDark);
+        // Contrast-safe fallback for raw standalone text without a container (WCAG AA 4.5:1)
+        const safeInk = Theme.ensureContrast(rawAccent, secondaryBg, 4.5, isDark);
+        const safeSecondary = Theme.ensureContrast(rawSecondary, secondaryBg, 4.5, isDark);
 
         const nextColors = {
             background: baseBg,
             surface: elevatedBg,
-            surfaceContainerLow: isDark ? "#1B2023" : "#EDF0F1",
+            surfaceContainerLow: isDark ? "#1B2023" : ltSurfLow,
             surfaceContainer: secondaryBg,
-            surfaceContainerHigh: isDark ? "#2C3438" : "#DAE1E3",
-            surfaceContainerHighest: isDark ? "#353E43" : "#CED7DA",
-            text: isDark ? "#E8EBEB" : "#252C2F",
-            subtext: isDark ? "#AAB5BA" : "#4A565B",
-            outline: isDark ? Qt.alpha("#E8EBEB", 0.08) : Qt.alpha("#252C2F", 0.09),
-            outlineStrong: isDark ? Qt.alpha("#E8EBEB", 0.14) : Qt.alpha("#252C2F", 0.15),
+            surfaceContainerHigh: isDark ? "#2C3438" : ltContHigh,
+            surfaceContainerHighest: isDark ? "#353E43" : ltContHighest,
+            text: isDark ? "#E8EBEB" : ltText,
+            subtext: isDark ? "#AAB5BA" : ltSubtext,
+            outline: isDark ? Qt.alpha("#E8EBEB", 0.08) : Qt.alpha(ltText, 0.08),
+            outlineStrong: isDark ? Qt.alpha("#E8EBEB", 0.14) : Qt.alpha(ltText, 0.14),
             wallPrimaryRaw: wpPrim,
             wallSecondaryRaw: wpSec,
             wallTertiaryRaw: wpTert,

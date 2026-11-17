@@ -9,18 +9,18 @@ Singleton {
     property bool isDarkMode: true
     property string customAccent: ""
 
-    // KINFAEL Neutral Charcoal & Light Base Surfaces (never pure black #000)
-    property color background: isDarkMode ? "#171A1C" : "#F3F5F5"
-    property color surface: isDarkMode ? "#202629" : "#FFFFFF"
-    property color surfaceContainerLow: isDarkMode ? "#1B2023" : "#EDF0F1"
-    property color surfaceContainer: isDarkMode ? "#252C2F" : "#E5EAEB"
-    property color surfaceContainerHigh: isDarkMode ? "#2C3438" : "#DAE1E3"
-    property color surfaceContainerHighest: isDarkMode ? "#353E43" : "#CED7DA"
+    // KINFAEL Neutral Charcoal & Tinted Paper Light Base Surfaces
+    property color background: isDarkMode ? "#171A1C" : "#EDF0F5"
+    property color surface: isDarkMode ? "#202629" : "#FAFCFD"
+    property color surfaceContainerLow: isDarkMode ? "#1B2023" : "#F2F5F8"
+    property color surfaceContainer: isDarkMode ? "#252C2F" : "#E6EBF0"
+    property color surfaceContainerHigh: isDarkMode ? "#2C3438" : "#DCE2E8"
+    property color surfaceContainerHighest: isDarkMode ? "#353E43" : "#D2D9E0"
     readonly property color surfaceVariant: surfaceContainerHigh
 
     // Primary & Secondary Typography Colors
-    property color text: isDarkMode ? "#E8EBEB" : "#252C2F"
-    property color subtext: isDarkMode ? "#AAB5BA" : "#4A565B"
+    property color text: isDarkMode ? "#E8EBEB" : "#1B2024"
+    property color subtext: isDarkMode ? "#AAB5BA" : "#4A545C"
 
     // Hairline Borders & Low-Contrast Separators
     property color outline: isDarkMode ? Qt.alpha("#E8EBEB", 0.08) : Qt.alpha("#252C2F", 0.09)

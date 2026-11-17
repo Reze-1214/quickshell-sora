@@ -8,6 +8,10 @@ Singleton {
 
     property bool isConnected: false
     property bool wifiEnabled: true
+    property bool airplaneMode: false
+    property bool airplaneBusy: false
+    property bool _preAirplaneWifi: true
+    property bool _preAirplaneBt: false
     property string ssid: ""
     readonly property string activeSsid: ssid
     property string networkType: ""
@@ -119,13 +123,38 @@ Singleton {
     }
 
     function toggleWifi(): void {
-        if (radioProc.running) return;
+        if (radioProc.running || airplaneProc.running) return;
         const turnOn = !root.wifiEnabled;
         root.lastError = "";
         root.connectingSsid = "";
         radioProc.turnOnTarget = turnOn;
-        radioProc.command = ["nmcli", "radio", "wifi", turnOn ? "on" : "off"];
+        radioProc.command = turnOn
+            ? ["sh", "-c", "rfkill unblock wlan >/dev/null 2>&1; nmcli radio wifi on"]
+            : ["nmcli", "radio", "wifi", "off"];
         radioProc.running = true;
+    }
+
+    function toggleAirplaneMode(btCurrentlyPowered: bool): void {
+        if (airplaneProc.running || radioProc.running) return;
+        const enable = !root.airplaneMode;
+        root.airplaneBusy = true;
+        root.lastError = "";
+        root.connectingSsid = "";
+        if (enable) {
+            root._preAirplaneWifi = root.wifiEnabled;
+            root._preAirplaneBt = !!btCurrentlyPowered;
+            airplaneProc.targetState = true;
+            airplaneProc.command = ["sh", "-c", "nmcli radio all off; rfkill block all"];
+        } else {
+            const restoreWifi = root._preAirplaneWifi || !root._preAirplaneBt;
+            const restoreBt = root._preAirplaneBt;
+            let cmd = "rfkill unblock all";
+            if (restoreWifi) cmd += " && nmcli radio wifi on";
+            if (restoreBt) cmd += " && (bluetoothctl power on >/dev/null 2>&1 || true)";
+            airplaneProc.targetState = false;
+            airplaneProc.command = ["sh", "-c", cmd];
+        }
+        airplaneProc.running = true;
     }
 
     function scanWifi(): void {
@@ -232,7 +261,7 @@ Singleton {
 
     Process {
         id: statusProc
-        command: ["sh", "-c", "nmcli -t -f WIFI g; echo '---DEV---'; nmcli -t -f TYPE,STATE,DEVICE,CONNECTION dev"]
+        command: ["sh", "-c", "nmcli -t -f WIFI g; echo '---RFK---'; rfkill -J 2>/dev/null || echo '{}'; echo '---DEV---'; nmcli -t -f TYPE,STATE,DEVICE,CONNECTION dev"]
         running: false
         stdout: SplitParser {
             onRead: data => {
@@ -240,14 +269,23 @@ Singleton {
             }
         }
         onExited: {
-            const chunks = root.rawBuffer.split("---DEV---\n");
-            if (chunks.length >= 2) {
-                const wifiState = chunks[0].trim().toLowerCase();
-                if (wifiState === "enabled" || wifiState === "disabled") {
-                    root.wifiEnabled = (wifiState === "enabled");
-                }
+            const rfkSplit = root.rawBuffer.split("---RFK---\n");
+            const wifiState = (rfkSplit[0] ?? "").trim().toLowerCase();
+            if (wifiState === "enabled" || wifiState === "disabled") {
+                root.wifiEnabled = (wifiState === "enabled");
             }
-            const devBlock = chunks.length >= 2 ? chunks[1] : root.rawBuffer;
+            const rest = rfkSplit.length >= 2 ? rfkSplit[1] : root.rawBuffer;
+            const chunks = rest.split("---DEV---\n");
+            if (chunks.length >= 2) {
+                try {
+                    const rfkObj = JSON.parse(chunks[0].trim() || "{}");
+                    const devs = rfkObj?.rfkilldevices;
+                    if (Array.isArray(devs) && devs.length > 0) {
+                        root.airplaneMode = devs.every(d => d.soft === "blocked" || d.hard === "blocked");
+                    }
+                } catch (e) {}
+            }
+            const devBlock = chunks.length >= 2 ? chunks[1] : rest;
             const lines = devBlock.trim().split("\n");
             let found = false;
             let detectedWifiIface = "";
@@ -302,10 +340,36 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
                 root.wifiEnabled = radioProc.turnOnTarget;
-                if (radioProc.turnOnTarget) postRadioScanTimer.restart();
-                else root.accessPoints = [];
+                if (radioProc.turnOnTarget) {
+                    root.airplaneMode = false;
+                    postRadioScanTimer.restart();
+                } else {
+                    root.accessPoints = [];
+                }
             } else {
                 root.lastError = "Unable to switch Wi-Fi radio";
+            }
+            root.refresh();
+        }
+    }
+
+    Process {
+        id: airplaneProc
+        property bool targetState: false
+        command: []
+        running: false
+        onExited: exitCode => {
+            root.airplaneBusy = false;
+            if (exitCode === 0) {
+                root.airplaneMode = airplaneProc.targetState;
+                if (airplaneProc.targetState) {
+                    root.wifiEnabled = false;
+                    root.accessPoints = [];
+                } else {
+                    postRadioScanTimer.restart();
+                }
+            } else {
+                root.lastError = "Unable to toggle Airplane Mode";
             }
             root.refresh();
         }

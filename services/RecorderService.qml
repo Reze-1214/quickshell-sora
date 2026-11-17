@@ -61,23 +61,15 @@ Singleton {
         }
     }
 
-    property int _idleTick: 0
-
     Timer {
-        interval: 1000
+        interval: root.isRecording ? 1000 : 15000
         running: true
         repeat: true
         onTriggered: {
             if (root.isRecording) {
                 root.durationSeconds++;
-                if (!checkProc.running) checkProc.running = true;
-            } else {
-                root._idleTick++;
-                if (root._idleTick >= 5) {
-                    root._idleTick = 0;
-                    if (!checkProc.running) checkProc.running = true;
-                }
             }
+            if (!checkProc.running) checkProc.running = true;
         }
     }
 }

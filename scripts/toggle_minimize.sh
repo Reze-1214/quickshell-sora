@@ -54,8 +54,8 @@ if [ -n "$active_addr" ] && [ "$active_addr" != "null" ] && [ "$active_ws" != "s
     fi
 
     # User feedback
-    app_label="${active_class:-Aplikasi}"
-    notify-send -t 1800 -a "Sora" "$app_label Diminimalkan" "Tekan SUPER+H atau klik di Dock untuk menampilkan kembali"
+    app_label="${active_class:-App}"
+    notify-send -t 1800 -a "Sora" "$app_label Minimized" "Press SUPER+H or click in Dock to restore"
 else
     # Restore last minimized window back to active workspace
     target_addr="$target_arg"

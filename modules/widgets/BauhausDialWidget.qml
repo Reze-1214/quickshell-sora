@@ -20,7 +20,7 @@ Item {
             anchors.fill: parent
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
-            Accessible.name: "Buka Monitor Performa Hardware"
+            Accessible.name: "Open Hardware Performance Monitor"
 
             RowLayout {
                 anchors.fill: parent

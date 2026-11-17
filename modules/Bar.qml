@@ -71,13 +71,14 @@ PanelWindow {
                 implicitHeight: Config.pillHeight
 
                 RectangularShadow {
+                    visible: !Theme.isDarkMode
                     anchors.fill: cachyBtn
                     radius: cachyBtn.radius
-                    blur: 8
+                    blur: 10
                     spread: 0.0
                     offset.x: 0
                     offset.y: 2
-                    color: Qt.alpha("#000000", Theme.isDarkMode ? 0.38 : 0.08)
+                    color: Qt.alpha("#000000", 0.10)
                 }
 
                 Rectangle {
@@ -86,7 +87,7 @@ PanelWindow {
                     radius: Config.pillRadius
                     color: Config.launcherOpen ? Theme.primary : Theme.surface
                     border.width: Config.launcherOpen ? 1 : 0
-                    border.color: Theme.primary
+                    border.color: Theme.accentInk
                     border.pixelAligned: true
 
                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
@@ -141,156 +142,189 @@ PanelWindow {
         }
 
         // ====================================================================
-        // RIGHT ARCHITECTURAL CLUSTER (Image 2 Circular Buttons + Contact Pill)
+        // RIGHT ARCHITECTURAL CLUSTER (Independent Floating Pills, Mirroring Left)
         // ====================================================================
-        RectangularShadow {
-            anchors.fill: rightCluster
-            radius: rightCluster.radius
-            blur: 10
-            spread: 0.0
-            offset.x: 0
-            offset.y: 2
-            color: Qt.alpha("#000000", Theme.isDarkMode ? 0.38 : 0.08)
-            z: rightCluster.z - 1
-        }
-
-        Rectangle {
-            id: rightCluster
+        RowLayout {
+            id: rightArea
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.round(rightRow.implicitWidth + 8)
-            implicitWidth: width
-            implicitHeight: Config.pillHeight
-            radius: Config.pillRadius
-            color: Qt.alpha(Theme.surface, 0.94)
-            border.width: 0
-            border.pixelAligned: true
+            spacing: 8
 
-            Behavior on width {
-                NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
+            Tray {
+                hasShadow: true
             }
 
-            RowLayout {
-                id: rightRow
-                anchors.centerIn: parent
-                spacing: 5
+            // Hardware Status Pill (Audio + Mic | Connectivity + Battery)
+            Pill {
+                hasShadow: true
+                interactive: true
+                spacing: 8
+                paddingH: 10
 
-                Tray {}
-
-                // Hardware Status Pill (Audio + Mic + Bluetooth + Network + Battery)
-                Pill {
-                    interactive: true
-                    spacing: 7
-                    paddingH: 10
-
-                    onClicked: mouse => {
-                        if (mouse.button === Qt.MiddleButton) {
-                            AudioService.toggleMute();
-                        } else {
-                            Config.toggleDashboard();
-                        }
+                onClicked: mouse => {
+                    if (mouse.button === Qt.MiddleButton) {
+                        AudioService.toggleMute();
+                    } else {
+                        Config.toggleDashboard();
                     }
-
-                    onWheelScrolled: wheel => {
-                        const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-                        AudioService.changeVolume(step);
-                    }
-
-                    Audio {}
-
-                    // Mic Muted Warning Indicator (Smart privacy status)
-                    Item {
-                        visible: AudioService.micReady && AudioService.micMuted
-                        implicitWidth: 14
-                        implicitHeight: 14
-                        Layout.alignment: Qt.AlignVCenter
-
-                        MatIcon {
-                            anchors.centerIn: parent
-                            icon: "mic_off"
-                            size: 13
-                            fill: 1.0
-                            color: Theme.urgentInk
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: AudioService.toggleMicMute()
-                        }
-                    }
-
-                    // Bluetooth Indicator (Shows when adapter is on; highlighted when connected)
-                    Item {
-                        visible: Bluetooth.powered
-                        implicitWidth: 14
-                        implicitHeight: 14
-                        Layout.alignment: Qt.AlignVCenter
-
-                        readonly property bool hasConn: Bluetooth.connectedDevice.length > 0
-
-                        MatIcon {
-                            anchors.centerIn: parent
-                            icon: parent.hasConn ? "bluetooth_connected" : "bluetooth"
-                            size: 14
-                            fill: parent.hasConn ? 1.0 : 0.0
-                            color: parent.hasConn ? Theme.primary : Theme.subtext
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
-                                    Bluetooth.togglePower();
-                                } else {
-                                    Config.dashboardPinned = true;
-                                    Config.dashboardOpen = true;
-                                    Config.activeSubPanel = "bluetooth";
-                                    Bluetooth.loadDevices();
-                                }
-                            }
-                        }
-                    }
-
-                    // Network / Wi-Fi Indicator
-                    Item {
-                        implicitWidth: 14
-                        implicitHeight: 14
-                        Layout.alignment: Qt.AlignVCenter
-
-                        MatIcon {
-                            anchors.centerIn: parent
-                            icon: Network.isConnected ? "wifi" : "wifi_off"
-                            size: 14
-                            fill: Network.isConnected ? 1.0 : 0.0
-                            color: Network.isConnected ? Theme.primary : Theme.subtext
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
-                                    Network.toggleWifi();
-                                } else {
-                                    Config.dashboardPinned = true;
-                                    Config.dashboardOpen = true;
-                                    Config.activeSubPanel = "wifi";
-                                    Network.refresh();
-                                    Network.scanWifi();
-                                }
-                            }
-                        }
-                    }
-
-                    Battery {}
                 }
 
-                // Image 2 "Contact" Style Clock Pill (Inner White Circle + Time)
-                Clock {}
+                onWheelScrolled: wheel => {
+                    const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
+                    AudioService.changeVolume(step);
+                }
+
+                Audio {}
+
+                // Mic Muted Warning Indicator (Smart privacy status)
+                Item {
+                    visible: AudioService.micReady && AudioService.micMuted
+                    implicitWidth: 14
+                    implicitHeight: 14
+                    Layout.alignment: Qt.AlignVCenter
+
+                    MatIcon {
+                        anchors.centerIn: parent
+                        icon: "mic_off"
+                        size: 13
+                        fill: 1.0
+                        color: Theme.urgentInk
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: AudioService.toggleMicMute()
+                    }
+                }
+
+                // Hairline separator between audio and connectivity/power
+                Rectangle {
+                    implicitWidth: 1
+                    implicitHeight: 12
+                    color: Theme.outlineStrong
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                // Bluetooth Indicator (Shows when adapter is on; highlighted when connected)
+                Item {
+                    visible: Bluetooth.powered
+                    implicitWidth: 14
+                    implicitHeight: 14
+                    Layout.alignment: Qt.AlignVCenter
+
+                    readonly property bool hasConn: Bluetooth.connectedDevice.length > 0
+
+                    MatIcon {
+                        anchors.centerIn: parent
+                        icon: parent.hasConn ? "bluetooth_connected" : "bluetooth"
+                        size: 14
+                        fill: parent.hasConn ? 1.0 : 0.0
+                        color: parent.hasConn ? Theme.accentInk : Theme.subtext
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                Bluetooth.togglePower();
+                            } else {
+                                Config.dashboardPinned = true;
+                                Config.dashboardOpen = true;
+                                Config.activeSubPanel = "bluetooth";
+                                Bluetooth.loadDevices();
+                            }
+                        }
+                    }
+                }
+
+                // Network / Wi-Fi Indicator
+                Item {
+                    implicitWidth: 14
+                    implicitHeight: 14
+                    Layout.alignment: Qt.AlignVCenter
+
+                    MatIcon {
+                        anchors.centerIn: parent
+                        icon: Network.isConnected ? "wifi" : "wifi_off"
+                        size: 14
+                        fill: Network.isConnected ? 1.0 : 0.0
+                        color: Network.isConnected ? Theme.accentInk : Theme.subtext
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                Network.toggleWifi();
+                            } else {
+                                Config.dashboardPinned = true;
+                                Config.dashboardOpen = true;
+                                Config.activeSubPanel = "wifi";
+                                Network.refresh();
+                                Network.scanWifi();
+                            }
+                        }
+                    }
+                }
+
+                Battery {}
+            }
+
+            // Clock Pill
+            Item {
+                implicitWidth: clockPill.implicitWidth
+                implicitHeight: clockPill.implicitHeight
+
+                RectangularShadow {
+                    visible: !Theme.isDarkMode
+                    anchors.fill: clockPill
+                    radius: clockPill.radius
+                    blur: 10
+                    spread: 0.0
+                    offset.x: 0
+                    offset.y: 2
+                    color: Qt.alpha("#000000", 0.10)
+                }
+
+                Clock {
+                    id: clockPill
+                    anchors.fill: parent
+                }
+            }
+
+            // Quick Light/Dark Mode Toggle (mirrors left CachyOS circular button)
+            Item {
+                implicitWidth: modeBtn.implicitWidth
+                implicitHeight: modeBtn.implicitHeight
+
+                RectangularShadow {
+                    visible: !Theme.isDarkMode
+                    anchors.fill: modeBtn
+                    radius: modeBtn.radius
+                    blur: 10
+                    spread: 0.0
+                    offset.x: 0
+                    offset.y: 2
+                    color: Qt.alpha("#000000", 0.10)
+                }
+
+                IconButton {
+                    id: modeBtn
+                    anchors.fill: parent
+                    icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
+                    iconSize: 14
+                    baseColor: Theme.surface
+                    hoverColor: Theme.surfaceContainerHigh
+                    iconColor: Theme.secondary
+                    Accessible.role: Accessible.Button
+                    Accessible.name: Theme.isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                    onClicked: ThemeEngine.toggleThemeMode()
+                }
             }
         }
     }
