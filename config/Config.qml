@@ -151,14 +151,33 @@ Singleton {
         { id: "discord", cmd: "discord", icon: "discord", title: "Discord" }
     ]
 
+    // True fullscreen only (Hyprland fullscreen >= 2); maximized (1) keeps bar & dashboard hot-edges active
     readonly property bool isCurrentFullscreen: {
         const topIpc = Hyprland.activeToplevel?.lastIpcObject;
-        const wsIpc = Hyprland.focusedMonitor?.activeWorkspace?.lastIpcObject;
-        return (topIpc?.fullscreen ?? 0) > 0 || (wsIpc?.hasfullscreen ?? false);
+        return (topIpc?.fullscreen ?? 0) >= 2;
+    }
+
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "fullscreen" || event.name === "workspace" || event.name === "focusedmon" || event.name === "activewindowv2") {
+                Hyprland.refreshToplevels();
+                Hyprland.refreshWorkspaces();
+            }
+        }
     }
 
     onIsCurrentFullscreenChanged: {
-        if (!isCurrentFullscreen) {
+        if (isCurrentFullscreen) {
+            dashboardOpenTimer.stop();
+            dashboardCloseTimer.stop();
+            dashboardOpen = false;
+            dashboardPinned = false;
+            dashboardHoldOpen = false;
+            dashboardBarHovered = false;
+            dashboardEdgeHovered = false;
+            dashboardCardHovered = false;
+        } else {
             dockFullscreenOverride = false;
         }
     }
@@ -324,6 +343,11 @@ Singleton {
     }
 
     function toggleDashboard(): void {
+        if (isCurrentFullscreen) {
+            dashboardOpen = false;
+            dashboardPinned = false;
+            return;
+        }
         const next = !dashboardOpen;
         closeAllOverlays();
         dashboardPinned = next;

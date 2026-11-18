@@ -54,9 +54,9 @@ Item {
         repeat: false
     }
 
-    // Light-mode elevation shadow (fades out when attached popover opens so neck has zero seam)
+    // Light-mode elevation shadow (only when floating without ScreenBorder top notch)
     RectangularShadow {
-        visible: !Theme.isDarkMode
+        visible: !Theme.isDarkMode && Config.screenBorderSize <= 0
         anchors.fill: pillCard
         radius: pillCard.radius
         blur: 10
@@ -67,14 +67,16 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
     }
 
-    // Outer Pill Capsule
+    // Outer Pill Capsule (transparent when fused into ScreenBorder top notch)
     Rectangle {
         id: pillCard
         anchors.fill: parent
         radius: Math.round(height / 2)
-        color: Config.centerPopoverOpen
-            ? Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
-            : Qt.alpha(mouseArea.containsMouse ? Theme.surfaceContainerHigh : Theme.surface, Theme.barOpacity)
+        color: Config.screenBorderSize > 0
+            ? "transparent"
+            : (Config.centerPopoverOpen
+                ? Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
+                : Qt.alpha(mouseArea.containsMouse ? Theme.surfaceContainerHigh : Theme.surface, Theme.barOpacity))
         border.width: 0
         border.color: Theme.primary
         border.pixelAligned: true

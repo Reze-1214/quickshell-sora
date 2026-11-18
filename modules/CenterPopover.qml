@@ -4,6 +4,7 @@ import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Widgets
 import "../config"
 import "../components"
 import "../services"
@@ -21,42 +22,79 @@ PanelWindow {
     }
 
     margins {
-        top: Config.barMarginTop + Math.round((Config.barHeight - Config.pillHeight) * 0.5) + Config.pillHeight
+        top: Config.screenBorderSize > 0
+            ? (Config.barMarginTop + Config.barHeight - 1)
+            : (Config.barMarginTop + Math.round((Config.barHeight - Config.pillHeight) * 0.5) + Config.pillHeight)
     }
 
-    readonly property int neckWidth: 228
-    readonly property int flareMax: 10
-    readonly property int flareSpan: 22
+    readonly property int minWidth: 280
+    readonly property int earRadius: 14
     readonly property int cardRadius: 18
     readonly property int cardWidth: Math.min(640, Math.max(360, Screen.width - 28))
     readonly property int cardHeight: 320
 
-    implicitWidth: cardWidth + 80
-    implicitHeight: cardHeight + flareMax + 60
+    implicitWidth: cardWidth + earRadius * 2 + 40
+    implicitHeight: cardHeight + 48
     color: "transparent"
 
     property bool _animReady: false
-    Component.onCompleted: Qt.callLater(() => { root._animReady = true; })
+    readonly property real openProgress: animDriver.progress
+    visible: Config.centerPopoverOpen || openProgress > 0.005
+    onVisibleChanged: {
+        if (!visible) _animReady = false;
+    }
 
-    property real openProgress: (_animReady && Config.centerPopoverOpen) ? 1.0 : 0.0
-    Behavior on openProgress {
-        NumberAnimation {
-            duration: Config.centerPopoverOpen ? 460 : 230
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Config.centerPopoverOpen
-                ? [0.16, 1.15, 0.30, 1.0, 1.0, 1.0]
-                : [0.4, 0.0, 0.85, 0.25, 1.0, 1.0]
+    FrameAnimation {
+        running: root.visible && Config.centerPopoverOpen && !root._animReady
+        onTriggered: {
+            if (root.backingWindowVisible) {
+                root._animReady = true;
+            }
         }
     }
 
-    visible: openProgress > 0.005
+    Item {
+        id: animDriver
+        property real progress: 0.0
+        states: State {
+            name: "open"
+            when: root._animReady && Config.centerPopoverOpen
+            PropertyChanges {
+                target: animDriver
+                progress: 1.0
+            }
+        }
+        transitions: [
+            Transition {
+                from: ""
+                to: "open"
+                NumberAnimation {
+                    target: animDriver
+                    property: "progress"
+                    duration: 500
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: [0.38, 1.21, 0.22, 1.0, 1.0, 1.0]
+                }
+            },
+            Transition {
+                from: "open"
+                to: ""
+                NumberAnimation {
+                    target: animDriver
+                    property: "progress"
+                    duration: 260
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: [0.05, 0.7, 0.1, 1.0, 1.0, 1.0]
+                }
+            }
+        ]
+    }
 
     readonly property real clamped: Math.max(0.0, Math.min(1.0, openProgress))
-    readonly property real bodyW: Math.max(neckWidth, neckWidth + (cardWidth - neckWidth) * openProgress)
+    readonly property real bodyW: cardWidth
     readonly property real bodyH: Math.max(0.0, cardHeight * openProgress)
-    readonly property real effFlare: Math.max(0.5, Math.min(flareMax, Math.max(0.0, (bodyW - neckWidth) * 0.5), bodyH * 0.45))
-    readonly property real effCardR: Math.max(0.5, Math.min(cardRadius, bodyH * 0.45))
-    readonly property real effFlareSpan: Math.max(0.5, Math.min(flareSpan, Math.max(0.5, (bodyW - neckWidth) * 0.5 - effCardR)))
+    readonly property real effEar: Math.max(0.5, Math.min(earRadius, bodyH * 0.35))
+    readonly property real effCardR: Math.max(0.5, Math.min(cardRadius, bodyH * 0.45, bodyW * 0.25))
 
     HoverHandler {
         id: windowHover
@@ -67,7 +105,7 @@ PanelWindow {
     Item {
         anchors.fill: parent
 
-        // Seamless invisible hover bridge covering the neck and card
+        // Seamless invisible hover bridge covering the drawer
         Item {
             id: centerHoverBridge
             anchors.top: parent.top
@@ -88,9 +126,11 @@ PanelWindow {
             id: popContainer
             anchors.horizontalCenter: parent.horizontalCenter
             y: 0
-            width: root.bodyW
-            height: root.effFlare + root.bodyH
-            opacity: Math.max(0.0, Math.min(1.0, root.clamped * 2.2))
+            width: root.bodyW + root.effEar * 2
+            height: root.bodyH
+            opacity: Config.centerPopoverOpen
+                ? Math.max(0.0, Math.min(1.0, root.clamped * 2.4))
+                : Math.max(0.0, Math.min(1.0, Math.pow(root.clamped, 0.75) * 1.15))
             focus: Config.centerPopoverOpen && Config.centerPinned
 
             Keys.onEscapePressed: event => {
@@ -99,23 +139,30 @@ PanelWindow {
                 event.accepted = true;
             }
 
-            readonly property real neckLeft: (width - root.neckWidth) * 0.5
-            readonly property real neckRight: neckLeft + root.neckWidth
-
-            RectangularShadow {
+            // Clip shadow below the top bezel overlap so the concave ear joins seamlessly
+            Item {
+                anchors.fill: parent
+                anchors.topMargin: Math.max(2, Math.round(root.effEar * 0.35))
+                anchors.leftMargin: -30
+                anchors.rightMargin: -30
+                anchors.bottomMargin: -40
+                clip: true
                 visible: !Theme.isDarkMode && root.bodyH > 4
-                x: 0
-                y: root.effFlare
-                width: popContainer.width
-                height: root.bodyH
-                radius: root.effCardR
-                blur: 16
-                spread: 0
-                offset.y: 4
-                color: Qt.alpha("#000000", 0.12)
+
+                RectangularShadow {
+                    x: 30 + root.effEar
+                    y: -Math.max(2, Math.round(root.effEar * 0.35))
+                    width: root.bodyW
+                    height: root.bodyH
+                    radius: root.effCardR
+                    blur: 24
+                    spread: 1
+                    offset.y: 5
+                    color: Qt.alpha("#000000", 0.22)
+                }
             }
 
-            // Borderless jelly/liquid Caelestia shape pouring out from the pill
+            // Borderless top-bezel drawer shape with symmetric concave top ears
             Shape {
                 id: popShape
                 anchors.fill: parent
@@ -124,79 +171,70 @@ PanelWindow {
 
                 ShapePath {
                     strokeWidth: -1
-                    fillColor: Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
+                    fillColor: Config.screenBorderSize > 0
+                        ? Theme.background
+                        : Qt.alpha(Theme.background, Theme.isDarkMode ? 0.94 : 0.96)
 
-                    startX: popContainer.neckLeft
+                    startX: 0
                     startY: 0
-                    PathLine { x: popContainer.neckRight; y: 0 }
-                    PathCubic {
-                        x: popContainer.neckRight + root.effFlareSpan
-                        y: root.effFlare
-                        control1X: popContainer.neckRight + 2
-                        control1Y: root.effFlare * 0.65
-                        control2X: popContainer.neckRight + root.effFlareSpan * 0.45
-                        control2Y: root.effFlare
-                    }
-                    PathLine { x: popShape.width - root.effCardR; y: root.effFlare }
+                    PathLine { x: popShape.width; y: 0 }
                     PathArc {
-                        x: popShape.width
-                        y: root.effFlare + root.effCardR
-                        radiusX: root.effCardR
-                        radiusY: root.effCardR
-                        direction: PathArc.Clockwise
+                        x: popShape.width - root.effEar
+                        y: root.effEar
+                        radiusX: root.effEar
+                        radiusY: root.effEar
+                        direction: PathArc.Counterclockwise
                     }
-                    PathLine { x: popShape.width; y: popShape.height - root.effCardR }
+                    PathLine { x: popShape.width - root.effEar; y: popShape.height - root.effCardR }
                     PathArc {
-                        x: popShape.width - root.effCardR
+                        x: popShape.width - root.effEar - root.effCardR
                         y: popShape.height
                         radiusX: root.effCardR
                         radiusY: root.effCardR
                         direction: PathArc.Clockwise
                     }
-                    PathLine { x: root.effCardR; y: popShape.height }
+                    PathLine { x: root.effEar + root.effCardR; y: popShape.height }
                     PathArc {
-                        x: 0
+                        x: root.effEar
                         y: popShape.height - root.effCardR
                         radiusX: root.effCardR
                         radiusY: root.effCardR
                         direction: PathArc.Clockwise
                     }
-                    PathLine { x: 0; y: root.effFlare + root.effCardR }
+                    PathLine { x: root.effEar; y: root.effEar }
                     PathArc {
-                        x: root.effCardR
-                        y: root.effFlare
-                        radiusX: root.effCardR
-                        radiusY: root.effCardR
-                        direction: PathArc.Clockwise
-                    }
-                    PathLine { x: popContainer.neckLeft - root.effFlareSpan; y: root.effFlare }
-                    PathCubic {
-                        x: popContainer.neckLeft
+                        x: 0
                         y: 0
-                        control1X: popContainer.neckLeft - root.effFlareSpan * 0.45
-                        control1Y: root.effFlare
-                        control2X: popContainer.neckLeft - 2
-                        control2Y: root.effFlare * 0.65
+                        radiusX: root.effEar
+                        radiusY: root.effEar
+                        direction: PathArc.Counterclockwise
                     }
                 }
             }
 
-            // Clipped content viewport inside the pouring card body
-            Item {
+            // Clipped content viewport blooming smoothly out from the top bezel (rounded bottom corners)
+            ClippingRectangle {
                 id: popCard
-                x: 0
-                y: root.effFlare
-                width: popContainer.width
+                x: root.effEar
+                y: 0
+                width: root.bodyW
                 height: root.bodyH
-                clip: true
+                color: "transparent"
+                border.width: 0
+                topLeftRadius: 0
+                topRightRadius: 0
+                bottomLeftRadius: root.effCardR
+                bottomRightRadius: root.effCardR
 
                 Item {
                     id: slideStage
-                    x: (popCard.width - root.cardWidth) * 0.5
-                    y: Math.round((1.0 - root.clamped) * -14)
+                    x: 0
+                    y: Math.round((1.0 - root.clamped) * -28)
                     width: root.cardWidth
                     height: root.cardHeight
-                    opacity: Math.max(0.0, Math.min(1.0, root.clamped * 1.35))
+                    opacity: Config.centerPopoverOpen
+                        ? Math.max(0.0, Math.min(1.0, root.clamped * 1.8))
+                        : Math.max(0.0, Math.min(1.0, root.clamped * 1.3))
 
                     // Horizontal 3-Page Sliding Carousel
                     Item {

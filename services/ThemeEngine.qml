@@ -209,19 +209,18 @@ Singleton {
         const isDark = Theme.isDarkMode;
         const mode = isDark ? "dark" : "light";
 
-        // 1. Resolve live wallpaper-extracted palette & neutral charcoal / tinted paper surfaces
+        // 1. Resolve live wallpaper-extracted palette & neutral charcoal / #F3F5F1 warm paper surfaces
         const palette = root.wallpaperPalette?.colors ?? root.cachedColorsData?.colors ?? null;
-        const ltSurfLowest = palette?.surface_container_lowest?.light?.color ?? "#FFFFFF";
-        const ltSurfLow = palette?.surface_container_low?.light?.color ?? "#F2F5F8";
-        const ltCont = palette?.surface_container?.light?.color ?? "#E6EBF0";
-        const ltContHigh = palette?.surface_container_high?.light?.color ?? "#DCE2E8";
-        const ltContHighest = palette?.surface_container_highest?.light?.color ?? "#D2D9E0";
-        const ltText = palette?.on_surface?.light?.color ?? "#1B2024";
-        const ltSubtext = palette?.on_surface_variant?.light?.color ?? "#4A545C";
+        const ltSurfLow = "#EAECE7";
+        const ltCont = "#E2E6DF";
+        const ltContHigh = "#D8DDD5";
+        const ltContHighest = "#CCD2C9";
+        const ltText = "#1C211E";
+        const ltSubtext = "#4E5650";
 
-        const baseBg = isDark ? "#171A1C" : Theme.blendRgb(ltCont, ltContHigh, 0.35);
-        const elevatedBg = isDark ? "#202629" : Theme.blendRgb(ltSurfLowest, ltSurfLow, 0.28);
-        const secondaryBg = isDark ? "#252C2F" : ltCont;
+        const baseBg = isDark ? "#141715" : "#F3F5F1";
+        const rawElevated = isDark ? "#1E221F" : "#F8F9F6";
+        const rawSecondaryBg = isDark ? "#242925" : ltCont;
 
         // 2. Resolve live wallpaper-extracted accents safely
         const wpBase = isDark
@@ -246,8 +245,13 @@ Singleton {
             rawSecondary = rawAccent;
         }
 
+        // 60-30-10: keep 60% base neutral, subtly tint 30% container surfaces with active accent
+        const surfaceTint = Qt.alpha(rawAccent, 0.04);
+        const elevatedBg = Qt.tint(rawElevated, surfaceTint);
+        const secondaryBg = Qt.tint(rawSecondaryBg, surfaceTint);
+
         // 4. Contrast references & text-on-fill calculation
-        const darkInkRef = isDark ? "#171A1C" : ltText;
+        const darkInkRef = isDark ? "#141715" : ltText;
         const lightInkRef = isDark ? "#F4F6F6" : "#F8FAFA";
 
         // Determine optimal high-contrast text/icon for onPrimary / accentOnFill (e.g. dark on yellow, white on dark blue)
@@ -262,10 +266,10 @@ Singleton {
         const nextColors = {
             background: baseBg,
             surface: elevatedBg,
-            surfaceContainerLow: isDark ? "#1B2023" : ltSurfLow,
+            surfaceContainerLow: isDark ? "#191D1A" : ltSurfLow,
             surfaceContainer: secondaryBg,
-            surfaceContainerHigh: isDark ? "#2C3438" : ltContHigh,
-            surfaceContainerHighest: isDark ? "#353E43" : ltContHighest,
+            surfaceContainerHigh: Qt.tint(isDark ? "#2B312C" : ltContHigh, surfaceTint),
+            surfaceContainerHighest: Qt.tint(isDark ? "#343B35" : ltContHighest, surfaceTint),
             text: isDark ? "#E8EBEB" : ltText,
             subtext: isDark ? "#AAB5BA" : ltSubtext,
             outline: isDark ? Qt.alpha("#E8EBEB", 0.08) : Qt.alpha(ltText, 0.08),
@@ -274,7 +278,7 @@ Singleton {
             wallSecondaryRaw: wpSec,
             wallTertiaryRaw: wpTert,
             accent: rawAccent,
-            accentInk: isDark ? rawAccent : safeInk,
+            accentInk: safeInk,
             accentOnFill: onFill,
             primary: rawAccent,
             onPrimary: onFill,

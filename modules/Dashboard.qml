@@ -40,10 +40,10 @@ PanelWindow {
     }
 
     readonly property real clamped: Math.max(0.0, Math.min(1.0, openProgress))
-    readonly property int drawerTopY: Config.barMarginTop + Math.round((Config.barHeight - Config.pillHeight) * 0.5) + Config.pillHeight + 2
+    readonly property int drawerTopY: Math.max(Config.screenBorderSize, Config.barMarginTop + Config.barHeight)
 
     color: "transparent"
-    visible: Config.dashboardOpen || openProgress > 0.005
+    visible: !Config.isCurrentFullscreen && (Config.dashboardOpen || openProgress > 0.005)
     onVisibleChanged: if (!visible) _animReady = false
 
     FrameAnimation {
@@ -1225,7 +1225,10 @@ PanelWindow {
         Item {
             id: dashScreenClip
             anchors.fill: parent
-            anchors.margins: Math.max(0, Config.screenBorderSize)
+            anchors.topMargin: Math.max(0, Config.screenBorderSize, Config.barMarginTop + Config.barHeight)
+            anchors.leftMargin: Math.max(0, Config.screenBorderSize)
+            anchors.rightMargin: Math.max(0, Config.screenBorderSize)
+            anchors.bottomMargin: Math.max(0, Config.screenBorderSize)
             clip: true
 
             // Hover bridge covering the gap between ScreenBorder edge and Bottom-Right Drawer
@@ -1356,7 +1359,7 @@ PanelWindow {
                         anchors.fill: parent
 
                 // ============================================================
-                // 1. COMPACT CONTROL CENTER HEADER BAR (58px)
+                // 1. TOP ATMOSPHERIC BANNER CARD (104px Bento-Aligned)
                 // ============================================================
                 Item {
                     id: heroBanner
@@ -1366,7 +1369,7 @@ PanelWindow {
                     anchors.right: parent.right
                     anchors.leftMargin: 10
                     anchors.rightMargin: 10
-                    implicitHeight: 58
+                    implicitHeight: 104
 
                     RectangularShadow {
                         visible: !Theme.isDarkMode
@@ -1405,214 +1408,261 @@ PanelWindow {
                             maskThresholdMin: 0.5
                         }
 
-                        // Subtle ambient wallpaper texture under header bar
                         Image {
                             id: heroBannerImg
                             anchors.fill: parent
                             source: ThemeEngine.dashboardBannerSrc
                             sourceSize.width: 816
-                            sourceSize.height: 116
+                            sourceSize.height: 208
                             fillMode: Image.PreserveAspectCrop
-                            verticalAlignment: Image.AlignVCenter
+                            verticalAlignment: Image.AlignTop
                             asynchronous: true
                             cache: true
                             smooth: true
-                            opacity: Theme.isDarkMode ? 0.16 : 0.08
+                            opacity: 1.0
                         }
 
+                        // Subtle bottom edge vignette keeps banner artwork rich in both modes
                         Rectangle {
-                            anchors.fill: parent
-                            color: Qt.alpha(root.colSurface, Theme.isDarkMode ? 0.78 : 0.86)
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 24
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: "transparent" }
+                                GradientStop { position: 1.0; color: Qt.alpha("#121517", 0.38) }
+                            }
                         }
 
-                        // Compact Header Row: Avatar, User/Uptime & 4 action buttons
-                        Item {
-                            anchors.fill: parent
+                        // Subtle top edge atmospheric scrim ensures top-strip legibility over bright skies
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: 44
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: Qt.alpha("#121517", 0.48) }
+                                GradientStop { position: 0.55; color: Qt.alpha("#121517", 0.22) }
+                                GradientStop { position: 1.0; color: "transparent" }
+                            }
+                        }
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 14
-                                anchors.rightMargin: 10
-                                spacing: 10
+                        // Asymmetric left-side readability veil covers identity + uptime cleanly without washing artwork
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            width: parent.width * 0.68
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: Qt.alpha("#121517", 0.72) }
+                                GradientStop { position: 0.50; color: Qt.alpha("#121517", 0.44) }
+                                GradientStop { position: 0.76; color: Qt.alpha("#121517", 0.16) }
+                                GradientStop { position: 1.0; color: "transparent" }
+                            }
+                        }
 
-                                // Circular Sora Avatar (~/.face with monogram fallback)
+                        // Top strip: Quiet subordinate brand mark left, consistent refined icon actions right
+                        RowLayout {
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.topMargin: 10
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 10
+                            spacing: 5
+
+                            Text {
+                                text: "SORA"
+                                font.family: root.uiFont
+                                font.pixelSize: 10
+                                font.weight: Font.Medium
+                                font.letterSpacing: 1.8
+                                color: Qt.alpha("#F4F6F6", 0.80)
+                                Layout.fillWidth: true
+                            }
+
+                            DashIconButton {
+                                implicitWidth: 28
+                                implicitHeight: 28
+                                icon: RecorderService.isRecording ? "stop_circle" : "screen_record"
+                                iconSize: 17
+                                iconWeight: 350
+                                destructive: RecorderService.isRecording
+                                active: RecorderService.isRecording
+                                fillIcon: RecorderService.isRecording
+                                accentFill: Theme.urgent
+                                normalInk: RecorderService.isRecording ? "#FCA5A5" : "#F6F8F8"
+                                hoverInk: RecorderService.isRecording ? "#FECACA" : "#FFFFFF"
+                                idleBg: Qt.alpha("#121517", 0.36)
+                                hoverBg: Qt.alpha("#121517", 0.62)
+                                dangerBg: Qt.alpha("#42191D", 0.72)
+                                accessName: RecorderService.isRecording ? "Stop screen recording" : "Screen record (Left: Region, Right: Fullscreen + Mic)"
+                                mouseButtons: Qt.LeftButton | Qt.RightButton
+                                onTriggered: {
+                                    if (RecorderService.isRecording) {
+                                        RecorderService.stopRecording();
+                                    } else {
+                                        Config.dashboardPinned = false;
+                                        Config.dashboardOpen = false;
+                                        RecorderService.toggleRecordRegion();
+                                    }
+                                }
+                                onRightClicked: {
+                                    if (RecorderService.isRecording) {
+                                        RecorderService.stopRecording();
+                                    } else {
+                                        Config.dashboardPinned = false;
+                                        Config.dashboardOpen = false;
+                                        RecorderService.toggleRecordFullscreen(true);
+                                    }
+                                }
+                            }
+
+                            DashIconButton {
+                                implicitWidth: 28
+                                implicitHeight: 28
+                                icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
+                                iconSize: 17
+                                iconWeight: 350
+                                normalInk: "#F6F8F8"
+                                hoverInk: "#FFFFFF"
+                                idleBg: Qt.alpha("#121517", 0.36)
+                                hoverBg: Qt.alpha("#121517", 0.62)
+                                accessName: Theme.isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
+                                onTriggered: ThemeEngine.toggleThemeMode()
+                            }
+
+                            DashIconButton {
+                                implicitWidth: 28
+                                implicitHeight: 28
+                                icon: "palette"
+                                iconSize: 17
+                                iconWeight: 350
+                                active: Config.activeSubPanel === "wallpapers"
+                                fillIcon: active
+                                accentFill: root.colAccent
+                                activeBg: Qt.alpha(root.colAccent, 0.38)
+                                accentInk: "#FFFFFF"
+                                normalInk: "#F6F8F8"
+                                hoverInk: "#FFFFFF"
+                                idleBg: Qt.alpha("#121517", 0.36)
+                                hoverBg: Qt.alpha("#121517", 0.62)
+                                accessName: "Appearance Settings"
+                                onTriggered: root.toggleSubPanel("wallpapers")
+                            }
+
+                            DashIconButton {
+                                implicitWidth: 28
+                                implicitHeight: 28
+                                icon: "power_settings_new"
+                                iconSize: 17
+                                iconWeight: 350
+                                destructive: true
+                                normalInk: "#F6F8F8"
+                                hoverInk: "#FCA5A5"
+                                idleBg: Qt.alpha("#121517", 0.36)
+                                hoverBg: Qt.alpha("#121517", 0.62)
+                                dangerBg: Qt.alpha("#42191D", 0.72)
+                                accessName: "Power Menu"
+                                onTriggered: Config.togglePowerMenu()
+                            }
+                        }
+
+                        // Bottom primary session identity row
+                        RowLayout {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            anchors.bottomMargin: 11
+                            spacing: 10
+
+                            // Circular Sora Avatar (~/.face with monogram fallback)
+                            Item {
+                                implicitWidth: 38
+                                implicitHeight: 38
+
+                                Rectangle {
+                                    id: bannerAvatarMask
+                                    anchors.fill: parent
+                                    radius: 19
+                                    color: "#ffffff"
+                                    visible: false
+                                    layer.enabled: true
+                                }
+
                                 Item {
-                                    implicitWidth: 34
-                                    implicitHeight: 34
-                                    Layout.alignment: Qt.AlignVCenter
-
-                                    Rectangle {
-                                        id: bannerAvatarMask
-                                        anchors.fill: parent
-                                        radius: 17
-                                        color: "#ffffff"
-                                        visible: false
-                                        layer.enabled: true
-                                    }
-
-                                    Item {
-                                        anchors.fill: parent
-                                        layer.enabled: true
-                                        layer.effect: MultiEffect {
-                                            maskEnabled: true
-                                            maskSource: bannerAvatarMask
-                                            maskSpreadAtMin: 1.0
-                                            maskThresholdMin: 0.5
-                                        }
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            color: root.colElevated
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: root.userName.slice(0, 1).toUpperCase()
-                                                font.family: root.uiFont
-                                                font.pixelSize: 14
-                                                font.weight: Font.Bold
-                                                color: root.colText
-                                            }
-                                        }
-
-                                        Image {
-                                            id: avatarImg
-                                            anchors.fill: parent
-                                            source: `file://${Quickshell.env("HOME")}/.face`
-                                            sourceSize.width: 152
-                                            sourceSize.height: 152
-                                            fillMode: Image.PreserveAspectCrop
-                                            asynchronous: true
-                                            smooth: true
-                                            visible: status === Image.Ready
-                                        }
+                                    anchors.fill: parent
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        maskEnabled: true
+                                        maskSource: bannerAvatarMask
+                                        maskSpreadAtMin: 1.0
+                                        maskThresholdMin: 0.5
                                     }
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: 17
-                                        color: "transparent"
-                                        border.width: 1
-                                        border.color: root.colBorderOuter
+                                        color: "#202629"
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: root.userName.slice(0, 1).toUpperCase()
+                                            font.family: root.uiFont
+                                            font.pixelSize: 15
+                                            font.weight: Font.Bold
+                                            color: "#F4F6F6"
+                                        }
+                                    }
+
+                                    Image {
+                                        id: avatarImg
+                                        anchors.fill: parent
+                                        source: `file://${Quickshell.env("HOME")}/.face`
+                                        sourceSize.width: 152
+                                        sourceSize.height: 152
+                                        fillMode: Image.PreserveAspectCrop
+                                        asynchronous: true
+                                        smooth: true
+                                        visible: status === Image.Ready
                                     }
                                 }
 
-                                ColumnLayout {
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 19
+                                    color: "transparent"
+                                    border.width: 1
+                                    border.color: Qt.alpha("#141719", 0.42)
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                spacing: 1
+
+                                Text {
+                                    text: root.userName
+                                    font.family: root.uiFont
+                                    font.pixelSize: 14
+                                    font.weight: Font.DemiBold
+                                    font.letterSpacing: -0.15
+                                    color: "#F6F8F8"
+                                    elide: Text.ElideRight
                                     Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 1
-
-                                    Text {
-                                        text: root.userName
-                                        font.family: root.uiFont
-                                        font.pixelSize: 13
-                                        font.weight: Font.DemiBold
-                                        font.letterSpacing: -0.15
-                                        color: root.colText
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
-
-                                    Text {
-                                        text: root.uptimeText
-                                        font.family: root.uiFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.Normal
-                                        color: root.colSubtext
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
                                 }
 
-                                RowLayout {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 4
-
-                                    DashIconButton {
-                                        implicitWidth: 28
-                                        implicitHeight: 28
-                                        icon: RecorderService.isRecording ? "stop_circle" : "screen_record"
-                                        iconSize: 17
-                                        iconWeight: 350
-                                        destructive: RecorderService.isRecording
-                                        active: RecorderService.isRecording
-                                        fillIcon: RecorderService.isRecording
-                                        accentFill: Theme.urgent
-                                        normalInk: RecorderService.isRecording ? root.colUrgentInk : root.colSubtext
-                                        hoverInk: RecorderService.isRecording ? root.colUrgentInk : root.colText
-                                        idleBg: "transparent"
-                                        hoverBg: Qt.alpha(root.colText, 0.07)
-                                        dangerBg: Qt.alpha(Theme.urgent, 0.14)
-                                        accessName: RecorderService.isRecording ? "Stop screen recording" : "Screen record (Left: Region, Right: Fullscreen + Mic)"
-                                        mouseButtons: Qt.LeftButton | Qt.RightButton
-                                        onTriggered: {
-                                            if (RecorderService.isRecording) {
-                                                RecorderService.stopRecording();
-                                            } else {
-                                                Config.dashboardPinned = false;
-                                                Config.dashboardOpen = false;
-                                                RecorderService.toggleRecordRegion();
-                                            }
-                                        }
-                                        onRightClicked: {
-                                            if (RecorderService.isRecording) {
-                                                RecorderService.stopRecording();
-                                            } else {
-                                                Config.dashboardPinned = false;
-                                                Config.dashboardOpen = false;
-                                                RecorderService.toggleRecordFullscreen(true);
-                                            }
-                                        }
-                                    }
-
-                                    DashIconButton {
-                                        implicitWidth: 28
-                                        implicitHeight: 28
-                                        icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
-                                        iconSize: 17
-                                        iconWeight: 350
-                                        normalInk: root.colSubtext
-                                        hoverInk: root.colText
-                                        idleBg: "transparent"
-                                        hoverBg: Qt.alpha(root.colText, 0.07)
-                                        accessName: Theme.isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
-                                        onTriggered: ThemeEngine.toggleThemeMode()
-                                    }
-
-                                    DashIconButton {
-                                        implicitWidth: 28
-                                        implicitHeight: 28
-                                        icon: "palette"
-                                        iconSize: 17
-                                        iconWeight: 350
-                                        active: Config.activeSubPanel === "wallpapers"
-                                        fillIcon: active
-                                        accentFill: root.colAccent
-                                        activeBg: Qt.alpha(root.colAccent, Theme.isDarkMode ? 0.18 : 0.14)
-                                        accentInk: root.colAccentInk
-                                        normalInk: root.colSubtext
-                                        hoverInk: root.colText
-                                        idleBg: "transparent"
-                                        hoverBg: Qt.alpha(root.colText, 0.07)
-                                        accessName: "Appearance Settings"
-                                        onTriggered: root.toggleSubPanel("wallpapers")
-                                    }
-
-                                    DashIconButton {
-                                        implicitWidth: 28
-                                        implicitHeight: 28
-                                        icon: "power_settings_new"
-                                        iconSize: 17
-                                        iconWeight: 350
-                                        destructive: true
-                                        normalInk: root.colSubtext
-                                        hoverInk: root.colUrgentInk
-                                        idleBg: "transparent"
-                                        hoverBg: Qt.alpha(root.colText, 0.07)
-                                        dangerBg: Qt.alpha(Theme.urgent, 0.14)
-                                        accessName: "Power Menu"
-                                        onTriggered: Config.togglePowerMenu()
-                                    }
+                                Text {
+                                    text: root.uptimeText
+                                    font.family: root.uiFont
+                                    font.pixelSize: 11
+                                    font.weight: Font.Normal
+                                    color: Qt.alpha("#F4F6F6", 0.86)
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
                             }
                         }
@@ -2132,129 +2182,179 @@ PanelWindow {
                                     color: root.colSurface
                                     clip: true
 
-                                    // Atmospheric album art underlay (contrast preserved by veil below)
-                                    Image {
-                                        anchors.fill: parent
-                                        visible: root.activePlayer !== null && coverArt.status === Image.Ready
-                                        source: root.activePlayer?.trackArtUrl ?? ""
-                                        sourceSize.width: 240
-                                        sourceSize.height: 240
-                                        fillMode: Image.PreserveAspectCrop
-                                        asynchronous: true
-                                        smooth: true
-                                        opacity: Theme.isDarkMode ? 0.18 : 0.10
-                                    }
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        visible: root.activePlayer !== null && coverArt.status === Image.Ready
-                                        color: Qt.alpha(root.colSurface, Theme.isDarkMode ? 0.78 : 0.86)
-                                    }
-
-                                    // Active Player Square Card
+                                    // Active Player Card (Clean surface, prominent cover art, iOS-style pill scrubber)
                                     ColumnLayout {
                                         id: mediaActiveCol
                                         anchors.fill: parent
-                                        anchors.margins: 11
-                                        spacing: 6
+                                        anchors.margins: 12
+                                        spacing: 8
                                         visible: root.activePlayer !== null
 
-                                        RowLayout {
+                                        // Header: 48x48 Artwork + Title/Artist (Click to open Lyrics/Media popover)
+                                        Item {
                                             Layout.fillWidth: true
-                                            spacing: 9
+                                            implicitHeight: 48
 
-                                            Rectangle {
-                                                Layout.preferredWidth: 42
-                                                Layout.preferredHeight: 42
-                                                radius: 8
-                                                color: root.colElevated
-                                                clip: true
-
-                                                Image {
-                                                    id: coverArt
-                                                    anchors.fill: parent
-                                                    source: root.activePlayer?.trackArtUrl ?? ""
-                                                    sourceSize.width: 120
-                                                    sourceSize.height: 120
-                                                    fillMode: Image.PreserveAspectCrop
-                                                    asynchronous: true
-                                                    visible: status === Image.Ready
-                                                }
-
-                                                MatIcon {
-                                                    anchors.centerIn: parent
-                                                    visible: coverArt.status !== Image.Ready
-                                                    icon: "album"
-                                                    size: 20
-                                                    color: root.colSubtext
-                                                }
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                spacing: 10
 
                                                 Rectangle {
-                                                    anchors.fill: parent
-                                                    radius: 8
-                                                    color: "transparent"
-                                                    border.width: 1
-                                                    border.color: root.colBorderOuter
+                                                    Layout.preferredWidth: 48
+                                                    Layout.preferredHeight: 48
+                                                    radius: 10
+                                                    color: root.colElevated
+                                                    clip: true
+
+                                                    Image {
+                                                        id: coverArt
+                                                        anchors.fill: parent
+                                                        source: root.activePlayer?.trackArtUrl ?? ""
+                                                        sourceSize.width: 144
+                                                        sourceSize.height: 144
+                                                        fillMode: Image.PreserveAspectCrop
+                                                        asynchronous: true
+                                                        visible: status === Image.Ready
+                                                    }
+
+                                                    MatIcon {
+                                                        anchors.centerIn: parent
+                                                        visible: coverArt.status !== Image.Ready
+                                                        icon: "music_note"
+                                                        size: 22
+                                                        color: root.colSubtext
+                                                    }
+
+                                                    Rectangle {
+                                                        anchors.fill: parent
+                                                        radius: 10
+                                                        color: "transparent"
+                                                        border.width: 1
+                                                        border.color: root.colBorderOuter
+                                                    }
+                                                }
+
+                                                ColumnLayout {
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    Layout.alignment: Qt.AlignVCenter
+                                                    spacing: 2
+
+                                                    Text {
+                                                        text: root.activePlayer?.trackTitle || "Untitled Track"
+                                                        font.family: root.uiFont
+                                                        font.pixelSize: 12
+                                                        font.weight: Font.Bold
+                                                        color: mediaHeaderMa.containsMouse ? root.colAccentInk : root.colText
+                                                        maximumLineCount: 1
+                                                        elide: Text.ElideRight
+                                                        Layout.fillWidth: true
+                                                        Behavior on color { ColorAnimation { duration: 110 } }
+                                                    }
+
+                                                    Text {
+                                                        text: root.activePlayer?.trackArtist || "Unknown Artist"
+                                                        font.family: root.uiFont
+                                                        font.pixelSize: 10
+                                                        font.weight: Font.Medium
+                                                        color: root.colSubtext
+                                                        maximumLineCount: 1
+                                                        elide: Text.ElideRight
+                                                        Layout.fillWidth: true
+                                                    }
                                                 }
                                             }
 
-                                            ColumnLayout {
-                                                Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                Layout.alignment: Qt.AlignVCenter
-                                                spacing: 1
-
-                                                Text {
-                                                    text: root.activePlayer?.trackTitle || "Untitled Track"
-                                                    font.family: root.uiFont
-                                                    font.pixelSize: 12
-                                                    font.weight: Font.DemiBold
-                                                    color: root.colText
-                                                    maximumLineCount: 1
-                                                    elide: Text.ElideRight
-                                                    Layout.fillWidth: true
-                                                }
-
-                                                Text {
-                                                    text: root.activePlayer?.trackArtist || "Unknown Artist"
-                                                    font.family: root.uiFont
-                                                    font.pixelSize: 10
-                                                    color: root.colSubtext
-                                                    maximumLineCount: 1
-                                                    elide: Text.ElideRight
-                                                    Layout.fillWidth: true
-                                                }
+                                            MouseArea {
+                                                id: mediaHeaderMa
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: Config.toggleMediaPopover()
                                             }
                                         }
 
                                         Item { Layout.fillHeight: true }
 
-                                        // Compact Scrubber + Time
+                                        // Sleek iOS-style Pill Scrubber + Timestamps
                                         ColumnLayout {
                                             Layout.fillWidth: true
-                                            spacing: 1
+                                            spacing: 3
 
-                                            DashSlider {
+                                            Item {
+                                                id: mediaPillScrubber
                                                 Layout.fillWidth: true
-                                                implicitHeight: 16
-                                                value: root.mediaRatio
-                                                minValue: 0.0
-                                                maxValue: 1.0
-                                                stepSize: Math.min(0.1, 5.0 / Math.max(1, root.mediaLen))
-                                                slEnabled: (root.activePlayer?.canSeek ?? false) && Config.activeSubPanel !== "wallpapers"
-                                                accessName: "Seek track position"
-                                                onMoved: ratio => {
-                                                    if (root.activePlayer?.canSeek) {
-                                                        const target = ratio * root.mediaLen;
+                                                implicitHeight: 14
+                                                activeFocusOnTab: ((root.activePlayer?.canSeek ?? false) && Config.activeSubPanel !== "wallpapers") || activeFocus
+                                                opacity: (root.activePlayer?.canSeek ?? false) ? 1.0 : 0.45
+                                                Accessible.role: Accessible.Slider
+                                                Accessible.name: "Seek track position"
+
+                                                readonly property bool hot: mediaSeekMa.containsMouse || mediaSeekMa.pressed || activeFocus
+
+                                                Rectangle {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    anchors.left: parent.left
+                                                    anchors.right: parent.right
+                                                    height: mediaPillScrubber.hot ? 7 : 5
+                                                    radius: height / 2
+                                                    color: root.colElevated
+                                                    clip: true
+                                                    Behavior on height { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+
+                                                    Rectangle {
+                                                        width: Math.max(0, Math.min(parent.width, parent.width * root.mediaRatio))
+                                                        height: parent.height
+                                                        radius: parent.radius
+                                                        color: root.colAccent
+                                                        Behavior on width {
+                                                            enabled: !mediaSeekMa.pressed
+                                                            NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+                                                        }
+                                                    }
+                                                }
+
+                                                Rectangle {
+                                                    visible: mediaPillScrubber.activeFocus
+                                                    anchors.fill: parent
+                                                    radius: 6
+                                                    color: "transparent"
+                                                    border.width: 1
+                                                    border.color: root.colAccentInk
+                                                }
+
+                                                MouseArea {
+                                                    id: mediaSeekMa
+                                                    anchors.fill: parent
+                                                    enabled: (root.activePlayer?.canSeek ?? false) && Config.activeSubPanel !== "wallpapers"
+                                                    hoverEnabled: true
+                                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                                                    function seekX(mx: real): void {
+                                                        const r = Math.max(0.0, Math.min(1.0, mx / Math.max(1, width)));
+                                                        const target = r * root.mediaLen;
                                                         root.activePlayer.position = target;
                                                         root.mediaPos = target;
                                                     }
+
+                                                    onPressed: mouse => seekX(mouse.x)
+                                                    onPositionChanged: mouse => { if (pressed) seekX(mouse.x); }
                                                 }
-                                                onStepped: delta => {
+
+                                                Keys.onLeftPressed: event => {
                                                     if (root.activePlayer?.canSeek) {
-                                                        const target = Math.max(0, Math.min(root.mediaLen, root.mediaPos + delta * root.mediaLen));
-                                                        root.activePlayer.position = target;
-                                                        root.mediaPos = target;
+                                                        const t = Math.max(0, root.mediaPos - 5);
+                                                        root.activePlayer.position = t;
+                                                        root.mediaPos = t;
+                                                        event.accepted = true;
+                                                    }
+                                                }
+                                                Keys.onRightPressed: event => {
+                                                    if (root.activePlayer?.canSeek) {
+                                                        const t = Math.min(root.mediaLen, root.mediaPos + 5);
+                                                        root.activePlayer.position = t;
+                                                        root.mediaPos = t;
+                                                        event.accepted = true;
                                                     }
                                                 }
                                             }
@@ -2284,10 +2384,10 @@ PanelWindow {
                                             }
                                         }
 
-                                        // Compact Transport Row
+                                        // Balanced Transport Controls
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 4
+                                            spacing: 2
 
                                             Item {
                                                 implicitWidth: 24
@@ -2324,10 +2424,11 @@ PanelWindow {
                                             Item { Layout.fillWidth: true }
 
                                             DashIconButton {
-                                                implicitWidth: 26
-                                                implicitHeight: 26
+                                                implicitWidth: 28
+                                                implicitHeight: 28
                                                 icon: "skip_previous"
-                                                iconSize: 18
+                                                iconSize: 19
+                                                fillIcon: true
                                                 normalInk: root.colText
                                                 btnEnabled: (root.activePlayer?.canGoPrevious ?? false) && Config.activeSubPanel !== "wallpapers"
                                                 accessName: "Previous Track"
@@ -2335,9 +2436,9 @@ PanelWindow {
                                             }
 
                                             Rectangle {
-                                                implicitWidth: 32
-                                                implicitHeight: 32
-                                                radius: 16
+                                                implicitWidth: 34
+                                                implicitHeight: 34
+                                                radius: 17
                                                 activeFocusOnTab: (root.activePlayer !== null && Config.activeSubPanel !== "wallpapers") || activeFocus
                                                 enabled: root.activePlayer?.canTogglePlaying ?? false
                                                 opacity: enabled ? 1.0 : 0.45
@@ -2352,7 +2453,7 @@ PanelWindow {
                                                 MatIcon {
                                                     anchors.centerIn: parent
                                                     icon: root.isPlaying ? "pause" : "play_arrow"
-                                                    size: 18
+                                                    size: 19
                                                     fill: 1.0
                                                     color: root.colAccentOnFill
                                                 }
@@ -2375,10 +2476,11 @@ PanelWindow {
                                             }
 
                                             DashIconButton {
-                                                implicitWidth: 26
-                                                implicitHeight: 26
+                                                implicitWidth: 28
+                                                implicitHeight: 28
                                                 icon: "skip_next"
-                                                iconSize: 18
+                                                iconSize: 19
+                                                fillIcon: true
                                                 normalInk: root.colText
                                                 btnEnabled: (root.activePlayer?.canGoNext ?? false) && Config.activeSubPanel !== "wallpapers"
                                                 accessName: "Next Track"

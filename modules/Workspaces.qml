@@ -17,7 +17,7 @@ Pill {
     readonly property int activeWsId: Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1
 
     readonly property int windowSize: 6
-    readonly property int slotWidth: Math.max(22, Config.pillHeight - 2)
+    readonly property int slotWidth: Math.max(26, Config.pillHeight + 2)
     readonly property int slotHeight: Math.min(24, Math.max(18, Config.pillHeight - 4))
     readonly property int itemSpacing: 3
 
@@ -274,14 +274,15 @@ Pill {
                 NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
             }
 
-            // Concentric two-edge liquid pill sliding cleanly behind active slots
+            // Concentric two-edge liquid pill sliding cleanly behind active slot (inverted monochrome, borderless)
             Rectangle {
                 id: liquidPill
                 z: 0
                 y: 0
                 height: root.slotHeight
                 radius: Math.round(root.slotHeight / 2)
-                color: Theme.accent
+                color: Theme.isDarkMode ? "#F3F5F1" : "#141715"
+                border.width: 0
                 border.pixelAligned: true
 
                 readonly property real targetLeft: Math.max(0, root.activeWsId - 1) * (root.slotWidth + root.itemSpacing)
@@ -366,9 +367,8 @@ Pill {
                     border.pixelAligned: true
 
                     color: {
-                        if (!wsBtn.isActive && wsHover.containsMouse) {
-                            return Theme.surfaceContainerHighest;
-                        }
+                        if (wsBtn.isActive) return "transparent";
+                        if (wsHover.containsMouse) return Qt.alpha(Theme.text, 0.06);
                         return "transparent";
                     }
 
@@ -387,12 +387,11 @@ Pill {
                         NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
                     }
 
-                    // Centered Application Logo or Crisp Workspace Number / Kanji
+                    // Centered Application Logo or Calm Empty Dot / Active Workspace Number
                     Item {
                         anchors.centerIn: parent
-                        anchors.verticalCenterOffset: (!wsBtn.isActive && wsBtn.hasApp) ? -1 : 0
-                        width: 16
-                        height: 16
+                        width: 14
+                        height: 14
 
                         // 1. Real App Icon (shown when window is open or minimized)
                         IconImage {
@@ -400,7 +399,7 @@ Pill {
                             visible: wsBtn.hasApp && wsBtn.appIcon.length > 0
                             source: wsBtn.appIcon
                             asynchronous: true
-                            opacity: wsBtn.isMinimized ? 0.45 : (wsBtn.isActive ? 1.0 : 0.88)
+                            opacity: wsBtn.isMinimized ? 0.45 : (wsBtn.isActive ? 1.0 : 0.90)
 
                             Behavior on opacity {
                                 NumberAnimation { duration: Theme.animFast }
@@ -412,10 +411,10 @@ Pill {
                             anchors.centerIn: parent
                             visible: wsBtn.hasApp && wsBtn.appIcon.length === 0
                             icon: (wsBtn.info && wsBtn.info.fallbackIcon) ? wsBtn.info.fallbackIcon : "window"
-                            size: 15
+                            size: 14
                             fill: wsBtn.isActive ? 1.0 : 0.0
                             color: wsBtn.isActive
-                                ? Theme.accentOnFill
+                                ? (Theme.isDarkMode ? "#141715" : "#F3F5F1")
                                 : (wsBtn.isMinimized ? Theme.urgentInk : Theme.text)
                             opacity: wsBtn.isMinimized && !wsBtn.isActive ? 0.65 : 1.0
 
@@ -424,10 +423,19 @@ Pill {
                             }
                         }
 
-                        // 3. Clear, crisp workspace numbers / Kanji when empty!
+                        // 3. Calm dot for idle empty slots; crisp number/Kanji when active or hovered
+                        Rectangle {
+                            anchors.centerIn: parent
+                            visible: !wsBtn.hasApp && !wsBtn.isActive && !wsHover.containsMouse
+                            width: 5
+                            height: 5
+                            radius: 2.5
+                            color: Qt.alpha(Theme.subtext, 0.45)
+                        }
+
                         Text {
                             anchors.centerIn: parent
-                            visible: !wsBtn.hasApp
+                            visible: !wsBtn.hasApp && (wsBtn.isActive || wsHover.containsMouse)
                             text: Config.useKanjiWorkspaces 
                                 ? (Config.kanjiNumbers[wsBtn.wsId - 1] ?? `${wsBtn.wsId}`) 
                                 : `${wsBtn.wsId}`
@@ -436,9 +444,7 @@ Pill {
                             font.weight: wsBtn.isActive ? Font.Bold : Font.Medium
                             font.hintingPreference: Theme.fontHinting
                             renderType: Theme.textRenderType
-                            color: wsBtn.isActive
-                                ? Theme.accentOnFill
-                                : (wsHover.containsMouse ? Theme.text : Theme.subtext)
+                            color: wsBtn.isActive ? (Theme.isDarkMode ? "#141715" : "#F3F5F1") : Theme.text
 
                             Behavior on color {
                                 ColorAnimation { duration: Theme.animFast }
@@ -446,18 +452,16 @@ Pill {
                         }
                     }
 
-                    // Occupied/minimized indicator on inactive workspaces (solid active tile needs no double bar)
+                    // Minimized window indicator only (occupied slots use subtle pill fill)
                     Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: 2
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: (!wsBtn.isActive && wsBtn.hasApp) || (wsBtn.isActive && wsBtn.isMinimized) ? 4 : 0
+                        width: wsBtn.isMinimized ? 4 : 0
                         height: 2
                         radius: 1
-                        color: wsBtn.isMinimized
-                            ? (wsBtn.isActive ? Theme.accentOnFill : Theme.urgentInk)
-                            : Theme.subtext
-                        visible: (!wsBtn.isActive && wsBtn.hasApp) || (wsBtn.isActive && wsBtn.isMinimized)
+                        color: wsBtn.isActive ? (Theme.isDarkMode ? "#141715" : "#F3F5F1") : Theme.urgentInk
+                        visible: wsBtn.isMinimized
 
                         Behavior on width {
                             NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutCubic }

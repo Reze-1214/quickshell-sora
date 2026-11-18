@@ -71,7 +71,7 @@ PanelWindow {
                 implicitHeight: Config.pillHeight
 
                 RectangularShadow {
-                    visible: !Theme.isDarkMode
+                    visible: !Theme.isDarkMode && Config.screenBorderSize <= 0
                     anchors.fill: cachyBtn
                     radius: cachyBtn.radius
                     blur: 10
@@ -85,9 +85,12 @@ PanelWindow {
                     id: cachyBtn
                     anchors.fill: parent
                     radius: Config.pillRadius
-                    color: Config.launcherOpen ? Theme.primary : Theme.surface
-                    border.width: Config.launcherOpen ? 1 : 0
-                    border.color: Theme.accentInk
+                    color: Config.launcherOpen
+                        ? Theme.primary
+                        : (Config.screenBorderSize > 0
+                            ? (cachyMa.containsMouse ? Theme.surfaceContainerLow : "transparent")
+                            : Theme.surface)
+                    border.width: 0
                     border.pixelAligned: true
 
                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
@@ -103,7 +106,9 @@ PanelWindow {
                     }
 
                     MouseArea {
+                        id: cachyMa
                         anchors.fill: parent
+                        hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         cursorShape: Qt.PointingHandCursor
                         onClicked: mouse => {
@@ -281,7 +286,7 @@ PanelWindow {
                 implicitHeight: clockPill.implicitHeight
 
                 RectangularShadow {
-                    visible: !Theme.isDarkMode
+                    visible: !Theme.isDarkMode && Config.screenBorderSize <= 0
                     anchors.fill: clockPill
                     radius: clockPill.radius
                     blur: 10
@@ -303,7 +308,7 @@ PanelWindow {
                 implicitHeight: modeBtn.implicitHeight
 
                 RectangularShadow {
-                    visible: !Theme.isDarkMode
+                    visible: !Theme.isDarkMode && Config.screenBorderSize <= 0
                     anchors.fill: modeBtn
                     radius: modeBtn.radius
                     blur: 10
@@ -318,8 +323,8 @@ PanelWindow {
                     anchors.fill: parent
                     icon: Theme.isDarkMode ? "light_mode" : "dark_mode"
                     iconSize: 14
-                    baseColor: Theme.surface
-                    hoverColor: Theme.surfaceContainerHigh
+                    baseColor: Config.screenBorderSize > 0 ? "transparent" : Theme.surface
+                    hoverColor: Config.screenBorderSize > 0 ? Theme.surfaceContainerLow : Theme.surfaceContainerHigh
                     iconColor: Theme.secondary
                     Accessible.role: Accessible.Button
                     Accessible.name: Theme.isDarkMode ? "Switch to light mode" : "Switch to dark mode"

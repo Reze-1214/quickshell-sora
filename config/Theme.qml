@@ -9,22 +9,22 @@ Singleton {
     property bool isDarkMode: true
     property string customAccent: ""
 
-    // KINFAEL Neutral Charcoal & Tinted Paper Light Base Surfaces
-    property color background: isDarkMode ? "#171A1C" : "#EDF0F5"
-    property color surface: isDarkMode ? "#202629" : "#FAFCFD"
-    property color surfaceContainerLow: isDarkMode ? "#1B2023" : "#F2F5F8"
-    property color surfaceContainer: isDarkMode ? "#252C2F" : "#E6EBF0"
-    property color surfaceContainerHigh: isDarkMode ? "#2C3438" : "#DCE2E8"
-    property color surfaceContainerHighest: isDarkMode ? "#353E43" : "#D2D9E0"
+    // KINFAEL Warm Charcoal (#141715) & Warm Paper (#F3F5F1) Base Surfaces
+    property color background: isDarkMode ? "#141715" : "#F3F5F1"
+    property color surface: isDarkMode ? "#1E221F" : "#F8F9F6"
+    property color surfaceContainerLow: isDarkMode ? "#191D1A" : "#EAECE7"
+    property color surfaceContainer: isDarkMode ? "#242925" : "#E2E6DF"
+    property color surfaceContainerHigh: isDarkMode ? "#2B312C" : "#D8DDD5"
+    property color surfaceContainerHighest: isDarkMode ? "#343B35" : "#CCD2C9"
     readonly property color surfaceVariant: surfaceContainerHigh
 
     // Primary & Secondary Typography Colors
-    property color text: isDarkMode ? "#E8EBEB" : "#1B2024"
-    property color subtext: isDarkMode ? "#AAB5BA" : "#4A545C"
+    property color text: isDarkMode ? "#E8EBEB" : "#1C211E"
+    property color subtext: isDarkMode ? "#AAB5BA" : "#4E5650"
 
     // Hairline Borders & Low-Contrast Separators
-    property color outline: isDarkMode ? Qt.alpha("#E8EBEB", 0.08) : Qt.alpha("#252C2F", 0.09)
-    property color outlineStrong: isDarkMode ? Qt.alpha("#E8EBEB", 0.14) : Qt.alpha("#252C2F", 0.15)
+    property color outline: isDarkMode ? Qt.alpha("#E8EBEB", 0.08) : Qt.alpha("#1C211E", 0.08)
+    property color outlineStrong: isDarkMode ? Qt.alpha("#E8EBEB", 0.14) : Qt.alpha("#1C211E", 0.14)
 
     // Wallpaper-Extracted Raw Tones (populated by ThemeEngine)
     property color wallPrimaryRaw: isDarkMode ? "#E8EBEB" : "#3D484D"
@@ -33,7 +33,7 @@ Singleton {
 
     // Accent Tokens (updated safely by ThemeEngine with WCAG AA clamping)
     property color primary: isDarkMode ? "#E8EBEB" : "#3D484D"
-    property color onPrimary: isDarkMode ? "#171A1C" : "#F8FAFA"
+    property color onPrimary: isDarkMode ? "#141715" : "#F8FAFA"
     property color secondary: isDarkMode ? "#AAB5BA" : "#4A565B"
     property color secondaryContainer: isDarkMode ? "#252C2F" : "#DCE3E5"
     property color primaryContainer: Qt.tint(surfaceContainer, Qt.alpha(primary, 0.16))

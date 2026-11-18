@@ -12,8 +12,8 @@ Rectangle {
     property bool interactive: false
     property bool active: false
     property bool hasShadow: false
-    property color baseColor: active ? Theme.primary : Theme.surface
-    property color hoverColor: active ? Theme.primary : Theme.surfaceContainerHigh
+    property color baseColor: active ? Theme.primary : (Config.screenBorderSize > 0 ? "transparent" : Theme.surface)
+    property color hoverColor: active ? Theme.primary : (Config.screenBorderSize > 0 ? Theme.surfaceContainerLow : Theme.surfaceContainerHigh)
 
     signal clicked(var mouse)
     signal doubleClicked(var mouse)
@@ -25,7 +25,7 @@ Rectangle {
     implicitHeight: Config.pillHeight
     radius: Math.round(height / 2)
     color: targetBgColor.a > 0 ? Qt.alpha(targetBgColor, Theme.barOpacity) : "transparent"
-    border.width: active ? 1 : 0
+    border.width: 0
     border.color: active ? Theme.primary : "transparent"
     border.pixelAligned: true
 
@@ -33,7 +33,7 @@ Rectangle {
     scale: interactive && mouseArea.pressed ? 0.96 : 1.0
 
     RectangularShadow {
-        visible: !Theme.isDarkMode && root.hasShadow
+        visible: !Theme.isDarkMode && root.hasShadow && Config.screenBorderSize <= 0
         anchors.fill: root
         radius: root.radius
         blur: 10
